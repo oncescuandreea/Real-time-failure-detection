@@ -1,0 +1,665 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Sat Apr  4 21:02:19 2020
+
+@author: Andreea
+"""
+
+import os
+import numpy as np #maths equations
+import random
+
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+from sklearn.cluster import KMeans
+from tensorflow.python.keras import utils
+#from tensorflow.python.keras.utils import to_categorical
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense
+from tensorflow.keras import regularizers
+
+from datetime import datetime
+
+
+def TFIDFretrieval(mycursor):
+    '''
+    This function retrieves tfidf scores for all documents
+    inputs: 
+        sql database
+    outputs: 
+        listTFIDF - list of TFIDF scores dictionaries associated with each doc
+        indexname - list of document names in order corresponding to listTFIDF
+        lengt - length of indexname list; number of documents available
+    '''
+    # retrieve columns from dataframe, containing the key words corresponding
+    # to tfidf scores
+    sql="SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA='final' AND TABLE_NAME='tfidfpd'";
+    mycursor.execute(sql)
+    NameOfColumns=mycursor.fetchall()
+    
+    #retrieve tfidf table from sql
+    sql="Select * from tfidfpd"
+    mycursor.execute(sql)
+    dictionaries = mycursor.fetchall()
+    
+    # lengthOfwordvec - Number of words in the TFIDF vector of each document
+    lengthOfwordvec = len(dictionaries[0])
+    
+    # List containing all tfidf dictionaries for all reports
+    listTFIDF = []
+    
+    # indexname retains the name of the reports being analysed in the order
+    # they are retrieved in
+    indexname = []
+    
+    for wordvec in dictionaries:
+        tfidfdict = {} # dictionary of one report
+        indexname.append(wordvec[0])
+        for i in range(1,lengthOfwordvec):
+            tfidfdict.update({NameOfColumns[i - 1][0][1:]:wordvec[i]})
+        listTFIDF.append(tfidfdict)
+    lengt=len(dictionaries) #number of documents
+    return listTFIDF, indexname, lengt
+
+
+def train_val_split (X_traintot, y_traintot, randomState):
+    '''
+    Function which returns a split of the data into validation and test
+    Random state is given such that the split of the actual labels and the NLP
+    predicted ones is always consistent
+    Inputs:
+        X_traintot - features extracted from all documents
+        y_traintot - labels corresponding to each document, either actual or 
+                    predicted
+        randomState - to control the split and allow for reproductibility
+    Outputs:
+        X_train - features corresponding to the train documents
+        X_val - features corresponding to the validation documents
+        y_train - labels corresponding to the train documents
+        y_val - labels corresponding to the validation documents
+    '''
+    #randomState=np.random.random()
+    
+    X_train, X_val, y_train, y_val = train_test_split(X_traintot, y_traintot, test_size=0.25, random_state=randomState)
+    
+    return [X_train, X_val, y_train, y_val]
+    
+def categoric(y_train, y_val, y_test):
+    '''
+    Function that transforms string labels into numbers for classification
+    Inputs:
+        y_train - labels corresponding to the train documents
+        y_val - labels corresponding to the validation documents
+        y_test - labels corresponding to the test documents
+    Outputs:
+        y_trainNN - numerical labels corresponding to the train documents
+        y_valNN - numerical labels corresponding to the validation documents
+        y_testNN - numerical labels corresponding to the test documents
+    '''
+    y_trainNN = utils.to_categorical(y_train)
+    y_valNN = utils.to_categorical(y_val)
+    y_testNN = utils.to_categorical(y_test)
+    return y_trainNN, y_valNN, y_testNN
+    
+def scoreCNNs(X, y, model, noclasses):
+    '''
+    Function returning the accuracy score for the artificial neural networks
+    Inputs:
+        X - features
+        y - numerical labels
+        model - NN model
+        noclasses - number of classes
+    Outputs:
+        scoreNN - accuracy score
+        predictedCNN1 - label prediction
+    '''
+    p1=model.predict(X)
+    predictedCNN1=[]
+    for row in p1:
+        pCNN1=[]
+        for i in range(0,noclasses):
+            pCNN1.append(0)
+        pCNN1[np.argmax(row)] = 1
+        predictedCNN1.append(pCNN1)
+    predictedCNN1=np.asarray(predictedCNN1)
+    predictedCNN1=predictedCNN1.astype(np.float32)
+
+    scoreNN = accuracy_score(y, predictedCNN1, normalize=True) #calculate accuracy score on test data
+    return scoreNN, predictedCNN1
+
+def modelf(noclasses, no_hidden, regularizer, activation_fct, no_layers):
+    '''
+    Function creates a ANN model based on the variable given by the user
+    Inputs:
+        noclasses - number of classes corresponding to number of output nodes
+        no_hidden - number of nodes in the hidden layers
+        regularizer - value of the regularizer to be used
+        activation_fct - activation function for the hidden layers
+        no_layers - number of hidden layers
+    Outputs:
+        modelNN - Neural network model
+    '''
+    modelNN = Sequential()
+    np.random.seed(0)
+    modelNN.add(Dense(no_hidden, input_dim=73, activation=activation_fct, kernel_regularizer=regularizers.l2(regularizer)))
+    if no_layers>1:
+        no_layers -= 1
+        for i in range(0, no_layers):
+            modelNN.add(Dense(no_hidden, activation=activation_fct, kernel_regularizer=regularizers.l2(regularizer)))
+
+    modelNN.add(Dense(noclasses, activation='softmax'))
+    return modelNN
+
+
+def get_data_from_different_labels_for_cluster_initialisation(no_labeled_sets,
+                                                              corrdict,
+                                                              final,
+                                                              indexname,
+                                                              cnx):
+    '''
+    Function randomly chooses documents and the associated data. There will be
+    no_labeled_sets of each type of document.
+    Inputs:
+        no_labeled_sets: how many documents of each type to be selected
+        corrdict [dictionary] - dictionary relating the report ID and the 
+            report name
+        final [117 x 268] - the dataframe containing the names of the reports
+            and the corresponding tfidf vectors
+        indexname - list relating the report index to the report name, the
+            index being the order in which reports are accessed in sql
+        cnx - to access the database
+    Outputs:
+        index_labels - index of documents to be used as train labels
+        labels_tot - labels corresponding to the index of documents used for
+            labeling
+        cluster_center_average [noclasses x no_features] - TFIDF cluster vector
+            with values given by averaging each vector location from each 
+            document from the corresponding labels. Used to initialise the
+            Kmeans clustering
+    '''
+    #extract all data form table an. it contains the id of the file and the 
+    # labels for each sensor
+    mycursor = cnx.cursor()
+    sqldataID = "select * from an"
+    mycursor.execute(sqldataID)
+    recorddataID = mycursor.fetchall()  # all labels and the ID for each doc
+    label = None
+    number_of_reports = len(recorddataID) - 1 #number of reports
+
+    no_labels = 7 * no_labeled_sets # each type of document receives a  label
+    labels_tot = [] # all labels associated with the randomly extracted documents
+    no_labels_so_far = 0 # how many documents have been labeled
+    index_labels = [] # the indexes of the randomly labelled documents, these 
+    #indexes correspond to the order of the documents in the dataframe
+    label_only_once = [] # a list containing only one of each lable
+    
+    while no_labels_so_far < no_labels:
+        
+        random_sample_report = random.randint(0, number_of_reports)
+        ID = recorddataID[random_sample_report][0]  # get ID of each recorded failure
+        # create a string corresponding to the failure by adding the failure 
+        # type and working words together
+        label = recorddataID[random_sample_report][3] + \
+                recorddataID[random_sample_report][1] + \
+                recorddataID[random_sample_report][4] + \
+                recorddataID[random_sample_report][2]
+        
+        report_name=corrdict[ID] # get the corresponding report name from ID
+        
+        # if the numbre of required labeled documents of each type has not been
+        # reached, then add label to label_only_once if it has not been met 
+        # before and add it to the list with all labels so far
+        if labels_tot.count(label)<no_labeled_sets:
+            if label not in label_only_once:
+                label_only_once.append(label)
+            labels_tot.append(label)
+            no_labels_so_far += 1
+            
+            # append dataframe index of labeled document
+            index_labels.append(indexname.index(report_name))
+            
+    # initialise list containing the cluer center values
+    cluster_center_average=[]
+    
+    # for each type of failure/document find all corresponding indexes and
+    # add up the corresponding tfidf vectors
+    for label in label_only_once:
+        location_of_labels = [i for i, labell in enumerate(labels_tot) if
+                  labell == label]
+        sum_tfidf_scores = 0
+        for location in location_of_labels:
+            sum_tfidf_scores=sum_tfidf_scores+np.asarray(final.loc[index_labels[location],:])
+        cluster_center_average.append(sum_tfidf_scores/no_labeled_sets)
+
+    return [index_labels, labels_tot, cluster_center_average]
+
+def kmeans_clustering(num_clusters,
+                      no_labeled_sets,
+                      corrdict,
+                      final,
+                      indexname,
+                      cnx,
+):
+    '''
+    Function returning the predicted labeled for each indexed document
+    Inputs:
+        num_clusters - number of classes
+        no_labeled_sets - how many sets of labels are manually provided
+        corrdict [dictionary] - dictionary relating the report ID and the 
+            report name
+        final [117 x 268] - the dataframe containing the names of the reports
+            and the corresponding tfidf vectors
+        indexname - list relating the report index to the report name, the
+            index being the order in which reports are accessed in sql
+        cnx - to access the database
+    Outputs:
+        clusters [No_documents x 1] - column vector with predicted cluster for
+            each document index
+        numberOfLabelsProvided - text to be output giving the number of
+            manually labeled sets
+    '''
+    if no_labeled_sets == 0:
+        numberOfLabelsProvided = "Unsupervised learning"
+        km = KMeans(n_clusters=num_clusters, max_iter=32)
+    else:
+        if no_labeled_sets == 1:
+            numberOfLabelsProvided = "1 set of labels"
+        else:
+            numberOfLabelsProvided = str(no_labeled_sets) + " sets of labels"
+        [_,_,arrayn] =\
+        get_data_from_different_labels_for_cluster_initialisation(no_labeled_sets,
+                                                                  corrdict,
+                                                                  final,
+                                                                  indexname,
+                                                                  cnx)
+        arrayn=np.asarray(arrayn)
+        km = KMeans(n_clusters=num_clusters, init=arrayn, max_iter=32, n_init=1)
+
+    km.fit(final)
+    
+    clusters = km.labels_.tolist()
+    return [clusters, numberOfLabelsProvided]
+
+def parametersNN():
+    '''
+    Function used to perform random search for the neural netowrk hyperparameters
+    Outputs:
+        randomly chosen hyperparameters
+    '''
+    no_hidden_val = range(1, 4)
+    regularizer_val = np.linspace(0.001, 0.1, 1000)
+    functions = ['tanh', 'relu', 'sigmoid', 'exponential']
+    no_hidden_nodes = range(100,300)
+    learning_rates = np.linspace(0.0001, 0.02, 1000)
+    epochs = range(130, 220)
+    
+    no_hidden_layers = random.sample(no_hidden_val, 1)[0]
+    no_hidden = random.sample(no_hidden_nodes, 1)[0]
+    activation_fct = functions[random.randint(0, len(functions) - 1)]
+    regularizer = random.sample(list(regularizer_val), 1)[0]
+    learning_rate = random.sample(list(learning_rates), 1)[0]
+    number_of_epochs = random.sample(epochs, 1)[0]
+    return no_hidden, no_hidden_layers, activation_fct, regularizer, learning_rate, number_of_epochs
+
+def parametersSVM():
+    '''
+    Function used to perform random search for the SVM hyperparameters
+    Outputs:
+        randomly chosen hyperparameters
+    '''
+    kernels = ['linear', 'poly', 'rbf', 'sigmoid']
+    kernel = kernels[random.randint(0, len(kernels) - 1)]
+    
+    range_powers_C = range(-5,5)
+    power_C = random.sample(range_powers_C, 1)[0]
+    C = 10 ** power_C
+    
+    decision_function_shapes = ['ovr', 'ovo']
+    decision_function = decision_function_shapes[random.randint(0, len(decision_function_shapes) - 1)]
+    
+    values_gamma = np.linspace(0, 1, 50)
+    gamma_float = random.sample(list(values_gamma), 1)[0]
+    gammas = ['auto', 'scale', gamma_float]
+    gamma = gammas[random.randint(0, len(gammas) - 1)]
+    return kernel, C, gamma, decision_function
+
+def get_parameter_sets(number_of_tests):
+    '''
+    Function used to retrieve {number_of_tests} lists of sets of randomly chosen
+    parameters for NN and SVM before fixing the random seeds. Used to later 
+    choose the best parameters
+    Inputs:
+        number_of_tests - number of sets of hyperparameters to be chosen before
+            deciding the parameters
+    Outputs:
+        list_of_paramsNN [number_of_tests x 6] - list of randomly chosen 
+            hyperparameters for the neural network
+        list_of_paramsSVM [number_of_tests x 4] - list of randomly chosen 
+            hyperparameters for the SVM
+    '''
+    # NN randomly chosen parameters
+    list_of_paramsNN = []
+    for i in range(0, number_of_tests + 1):
+        list_of_paramsNN.append(parametersNN())
+    
+    # SVM randomly chosen parameters
+    list_of_paramsSVM = []
+    for i in range(0, number_of_tests + 1):
+        list_of_paramsSVM.append(parametersSVM())
+    
+    return list_of_paramsNN, list_of_paramsSVM
+
+def get_parameters(random, list_of_params, list_of_paramsSVM, number_of_tests, file):
+    '''
+    Function returning two dictionaries with the chosen hyperparameters for NN
+    and for the SVM. It also prints to the file the values
+    Inputs:
+        random - True if random search hyperparameter values wanted
+                   False to use best hyperparameters found so far
+        list_of_params [number_of_tests x 6] - list of lists containing NN 
+            hyperparameters
+        list_of_paramsSVM [number_of_tests x 4] - list of lists containing SVM
+            hyperparameters
+        number_of_tests - number of sets of randomly chosen parameters 
+            corresponding to the number of times the scrips will be run
+        file - file to which hyperparameters are written
+    Outputs:
+        dictNN - dictionary with hyperparameters for NN
+        dictSVM - dictionary with hyperparameters for SVM
+    '''
+    dictNN = {}
+    dictSVM = {}
+    if random == 'False':
+        dictNN['no_hidden'] = 206 #used to be 140 best 180
+        dictNN['no_layers'] = 3 #used to be 2
+        dictNN['activation_fct'] = 'tanh' #used to be relu
+        dictNN['regularizer'] = 0.0010990990990990992 # used to be 0.01
+        dictNN['learning_rate'] = 0.01221131131131131 #used to be 0.01
+        dictNN['number_of_epochs'] = 154 #used to be 130
+        
+        dictSVM['kernel'] = 'sigmoid' #used to be linear
+        dictSVM['C'] = 10000 # used to be 1
+        dictSVM['gamma'] = 'scale' # used to be 1
+        dictSVM['decision_function'] = 'ovo' #as in report
+    else:
+        dictNN['no_hidden'] = list_of_params[number_of_tests][0]
+        dictNN['no_layers'] = list_of_params[number_of_tests][1]
+        dictNN['activation_fct'] = list_of_params[number_of_tests][2]
+        dictNN['regularizer'] = list_of_params[number_of_tests][3]
+        dictNN['learning_rate'] = list_of_params[number_of_tests][4]
+        dictNN['number_of_epochs'] = list_of_params[number_of_tests][5]
+
+        dictSVM['kernel'] = list_of_paramsSVM[number_of_tests][0]
+        dictSVM['C'] = list_of_paramsSVM[number_of_tests][1]
+        dictSVM['gamma'] = list_of_paramsSVM[number_of_tests][2]
+        dictSVM['decision_function'] = list_of_paramsSVM[number_of_tests][3]
+
+    dictNN['loss_fct'] = 'categorical_crossentropy' #used to be categorical crossentropy
+    dictNN['decay_set'] = 1e-2/dictNN['number_of_epochs'] # used to be 1e-2/number_of_epochs
+    
+    print(file=file)
+    print("No of hidden nodes: " + str(dictNN['no_hidden']), file=file)
+    print(file=file)
+    print("Value of regularizer term " + str(dictNN['regularizer']), file=file)
+    print(file=file)
+    print("Activation function is " + dictNN['activation_fct'], file=file)
+    print(file=file)
+    print("Learning rate is " + str(dictNN['learning_rate']), file=file)
+    print(file=file)
+    print("Momentum not used", file=file)
+    print(file=file)
+    print("Number of epochs " + str(dictNN['number_of_epochs']), file=file)
+    print(file=file)
+    print("Number of hidden layers" + str(dictNN['no_layers']), file=file)
+    print(file=file)
+    print("Loss function used is " + dictNN['loss_fct'], file=file)
+    print(file=file)
+    print("Decay is " + str(dictNN['decay_set']), file=file)
+    
+    print("------------------------------", file=file)
+    print("SVM C is " + str(dictSVM['C']), file=file)
+    print(file=file)
+    print("SVM kernel is "+ dictSVM['kernel'], file=file)
+    print(file=file)
+    print("SVM gamma is " + str(dictSVM['gamma']), file=file)
+    print(file=file)
+    print("SVM decision function is " + dictSVM['decision_function'], file=file)
+    
+    return dictNN, dictSVM
+
+def NLP_labels_analysis(num_clusters,
+                        lengt,
+                        clusters,
+                        numberOfLabelsProvided,
+                        test,
+):
+    '''
+    Function which returns the confusion matrix for the predicted labels using
+    Kmeans
+    Inputs:
+        num_clusters - number of classes/clusters expected
+        lengt - number of reports/documents available
+        clusters [No_documents x 1] - column vector with predicted cluster for
+            each document index
+        numberOfLabelsProvided - text to be output giving the number of
+            manually labeled sets
+        test - index of documents to be used as train labels
+    Outputs:
+        file - .txt file containing the indexes of files used as given labels 
+            and accuracy matrix
+        newdir - name of directory containing the file
+    '''
+    # create confusion matrix for the labels
+    
+    countl={}
+    countvec=[]
+    for i in range(0,num_clusters):
+        countl[i]=0
+    for i in range(0,num_clusters):
+        countvec.append(dict(countl))
+    
+    ok=0
+    label1=[]
+    
+    tot1=0
+    label2=[]
+    
+    tot2=0
+    label3=[]
+    
+    tot3=0
+    label4=[]
+    
+    tot4=0
+    label5=[]
+    
+    tot5=0
+    label6=[]
+    
+    tot6=0
+    label7=[]
+    
+    tot7=0
+    maxim=dict(countl) #used to detect the main diagonal by finding the maximum entry for each manually set label
+    
+    labels={}
+    # create confusion matrices by finding coresponding clusters
+    # at every run the computer changes the ids of the clusters and we want to find the
+    # correlation between our counting sysetem
+    for i in range(0, lengt):
+        if (i>=0 and i<=11) or (41<=i and i<=46) or (59<=i and i<=64): #this is label 1
+            countvec[0][clusters[i]]+=1 #unordered confusion matrix 
+            if countvec[0][clusters[i]] >maxim[0]:
+                maxim[0]=countvec[0][clusters[i]]
+                l1=clusters[i]
+            tot1+=1
+            label1='gsr ground pin'
+        else:
+            if (i>=12 and i<=29) or (53<=i and i<=58): #this is label 2
+                countvec[1][clusters[i]]+=1
+                if countvec[1][clusters[i]] >maxim[1]:
+                    maxim[1]=countvec[1][clusters[i]]
+                    l2=clusters[i]
+                tot2+=1
+                label2='gsr analog pin'
+            else:
+                if (i>=30 and i<=40) or (47<=i and i<=52): #this is label 3
+                    countvec[2][clusters[i]]+=1
+                    if countvec[2][clusters[i]] >maxim[2]:
+                        maxim[2]=countvec[2][clusters[i]]
+                        l3=clusters[i]
+                    tot3+=1
+                    label3='gsr resistor burnt'
+                else:
+                    if i==65 or (i>=74 and i<=79) or (i>=100 and i<=105): #this is label 4
+                        countvec[3][clusters[i]]+=1
+                        if countvec[3][clusters[i]] >maxim[3]:
+                            maxim[3]=countvec[3][clusters[i]]
+                            l4=clusters[i]
+                        tot4+=1
+                        label4='temperature ground pin'
+                    else:
+                        if (i>=66 and i<=70) or (i>=106 and i<=111): #this is label 5
+                            countvec[4][clusters[i]]+=1
+                            if countvec[4][clusters[i]] >maxim[4]:
+                                maxim[4]=countvec[4][clusters[i]]
+                                l5=clusters[i]
+                            tot5+=1
+                            label5='acceleration power pin'
+                        else:
+                            if (i>=71 and i<=73) or (i>=80 and i<=81) or (i>=112 and i<=117): #this is label 6
+                                countvec[5][clusters[i]]+=1
+                                if countvec[5][clusters[i]] >maxim[5]:
+                                   maxim[5]=countvec[5][clusters[i]]
+                                   l6=clusters[i]
+                                tot6+=1
+                                label6='acceleration ground pin'
+                            else:
+                                countvec[6][clusters[i]]+=1 
+                                if countvec[6][clusters[i]] >maxim[6]:
+                                   maxim[6]=countvec[6][clusters[i]]
+                                   l7=clusters[i]
+                                tot7+=1
+                                label7='humidity power pin'
+    
+    
+    val=0.75 #accuracy value; used when looping through to find the number of times needed to run the code to get above 75% accuracy
+    if l5==l6:        #sometimes accelerometer ground/power pin get clustered in the same cluster because of the reports similarity       
+        labels[0] = l1
+        labels[1] = l2
+        labels[2] = l3
+        labels[3] = l4
+        labels[4] = l5
+        labels[5] = 21 - l1 - l2 - l3 - l4 - l5 - l7
+        labels[6] = l7
+        ok=0
+    else:
+        labels[0] = l1
+        labels[1] = l2
+        labels[2] = l3
+        labels[3] = l4
+        labels[4] = l5
+        labels[5] = l6
+        labels[6] = l7
+        if maxim[0]/tot1>val and maxim[1]/tot2>val and maxim[2]/tot3>val and maxim[3]/tot4>val and maxim[4]/tot5>val and maxim[5]/tot6>val and maxim[6]/tot7>val:
+            ok = 1 #used to stop the loop when if conditions are met
+    
+    now = datetime.now()
+    current_time = now.strftime("%H_%M_%S")
+    current_date = now.date()
+    newdir = "C:/Users/Andreea/OneDrive - Nexus365/Results/Results_"+str(current_date) + "_"+current_time
+    os.mkdir(newdir)
+    f = open(newdir+"/results.txt", 'w')
+    for i in range(0,7):
+        for j in range(0,7):
+            print(countvec[i][labels[j]], end=" ", file=f)
+        print(file=f)
+    print(numberOfLabelsProvided, file=f)
+    print(file=f)
+    print("Indices of the files used:",file=f)
+    print(test, file=f)
+    return f, newdir
+
+def features_list(mycursor, ID):
+    '''
+    Function created list of features containing all features from all sensors
+    and the ID of that specific dataset.
+    Inputs:
+        mycursor - for accessing sql database
+        ID - for accessing the corresponding features in the database
+    Outputs:
+        features - list of combined features from GSR, Acc, Hum, Temp sensors
+    '''
+    dict_sensors={}
+    dict_sensors['GSR'] = 'gsr2'
+    dict_sensors['Acc'] = 'FEAT2'
+    dict_sensors['Hum'] = 'hum3'
+    dict_sensors['Temp'] = 'tempd3'
+    
+    features = []
+    features.append(ID)
+    for sensor in ['GSR', 'Acc', 'Hum', 'Temp']:
+        sql = f"select * from {dict_sensors[sensor]} where ID='"+ID+"'"
+        mycursor.execute(sql)
+        data = mycursor.fetchall()
+        for el in data[0][1:]:
+            features.append(el)
+    return features
+
+def normalise(Xa, lengt):
+    '''
+    Function returns a normalised version of Xa. Features are normalsied
+    Inputs:
+        Xa [lengt x No_features] - matrix of feature vectors except the ID
+        lengt - number of documents
+    Outputs:
+        XSVM [No_documents x No_features] - normalised matrix of features
+    '''
+    Xa = np.asarray(Xa)
+    Xa = Xa.astype(np.float64)
+    Xnew = np.transpose(Xa)
+    XSVM = np.empty([lengt, 73])
+    for i in range(0,73):
+        mini = min(Xnew[i])
+        maxi = max(Xnew[i])
+        for j in range(0, lengt):
+            XSVM[j][i] = (Xa[j][i] - mini) / (maxi - mini)
+    return XSVM
+
+def name_to_id(mycursor):
+    '''
+    Create dictionary relating the name and the id of the reports
+    '''
+    name2id = {}
+    sql = "select * from corr"
+    mycursor.execute(sql)
+    correlationdata=mycursor.fetchall()
+    
+    for row in correlationdata:
+        name2id.update({row[0]:row[1]})
+    return name2id
+
+def labels_and_features(mycursor, name2id, reportName2cluster, lengt):
+    Xa=[]
+    sqldataID="select * from an"
+    mycursor.execute(sqldataID)
+    recorddataID = mycursor.fetchall() #all features from all documents
+    label = None
+    labelNLP = None
+    yNLP = [] # Kmeans labels
+    y = [] #manual labels
+
+    for results in recorddataID:
+        ID = results[0] # get ID of each recorded failure
+        
+        labelNLP = reportName2cluster[name2id[ID]] # get cluster number from K means
+        label=results[3]+results[1]+results[4]+results[2] # create a string corresponding to the failure by adding the failure type and working words together
+
+        yNLP.append(labelNLP)
+        y.append(label)
+
+        features = features_list(mycursor, ID)
+        Xa.append(features[1:])
+
+    XSVM = normalise(Xa, lengt)
+    return y, yNLP, XSVM
