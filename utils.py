@@ -9,6 +9,8 @@ import os
 import numpy as np #maths equations
 import random
 
+from numpy import mean
+from sklearn.naive_bayes import GaussianNB
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 from sklearn.cluster import KMeans
@@ -17,8 +19,11 @@ from tensorflow.python.keras import utils
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense
 from tensorflow.keras import regularizers
+from sklearn import svm
+from sklearn.metrics import confusion_matrix
 
 from datetime import datetime
+from collections import Counter
 
 
 def TFIDFretrieval(mycursor):
@@ -375,7 +380,7 @@ def get_parameters(random, list_of_params, list_of_paramsSVM, number_of_tests, f
         dictNN['activation_fct'] = 'tanh' #used to be relu
         dictNN['regularizer'] = 0.0010990990990990992 # used to be 0.01
         dictNN['learning_rate'] = 0.01221131131131131 #used to be 0.01
-        dictNN['number_of_epochs'] = 154 #used to be 130
+        dictNN['number_of_epochs'] = 154 #used to be 130 # 154
         
         dictSVM['kernel'] = 'sigmoid' #used to be linear
         dictSVM['C'] = 10000 # used to be 1
@@ -663,3 +668,252 @@ def labels_and_features(mycursor, name2id, reportName2cluster, lengt):
 
     XSVM = normalise(Xa, lengt)
     return y, yNLP, XSVM
+
+def train_val_split_stratify(counter, inc, X_traintot, y_traintot,
+                             X_traintotNLP, y_traintotNLP,
+                             X_test, X_testNLP, y_test, y_testNLP):
+    '''
+    Function verifies if both the NLP and the actual labels split contains
+    examples of each class. It increases inc until the random state selected
+    splits the data correctly. The function then outputs the split data
+    Inputs:
+        counter - how many times the script was run and the split was performed
+        inc - increment varies such that the split is correct
+        X_traintot/NlP - train and validation features
+        y_traintot/NLP - train and validation labels/predicted labels
+        X_test/NLP - test features
+        y_test/NLP - test labels/predicted labels
+    Outputs:
+        dictXy - containing the train/val/test features split and labels split
+            for both actual labels and NLP infered ones and the categorical
+            number associated with the labels
+        counter - does not change
+        inc - increment used for the random split
+        
+    '''
+    # set random state to be the same for both predicted and actual labels
+    randomState = counter+inc
+    
+    dictXy = {}
+
+    # split remaining data in train and validation data for actual labels
+    [X_train, X_val, y_train, y_val] = train_val_split (X_traintot,y_traintot,randomState)
+
+
+    # split remaining data in train and validation data for predicted labels
+    [X_trainNLP, X_valNLP, y_trainNLP, y_valNLP] = train_val_split (X_traintotNLP,y_traintotNLP,randomState)
+
+    # in case the selected random state does not distribute data evenly (soome labels are not represented in the train/validation set, increase randomState until the split is adequate)
+    while len(Counter(y_train)) != len(Counter(y_val)) or len(Counter(y_trainNLP)) != len(Counter(y_valNLP)):
+        inc += 1
+        randomState = counter + inc
+
+        # split remaining data in train and validation data for actual labels
+        [X_train, X_val, y_train, y_val] = train_val_split (X_traintot,y_traintot,randomState)
+
+        # split remaining data in train and validation data for predicted labels
+        [X_trainNLP, X_valNLP, y_trainNLP, y_valNLP] = train_val_split (X_traintotNLP,y_traintotNLP,randomState)
+        
+    # transform the actual labels into numbers
+    [y_trainNN, y_valNN, y_testNN]=categoric(y_train, y_val, y_test)
+
+    # do the same for NLP although not neccesary in this case
+    [y_trainNNNLP, y_valNNNLP, y_testNNNLP]=categoric(y_trainNLP, y_valNLP, y_testNLP)
+    
+    dictXy['X_train'] = X_train
+    dictXy['X_val'] = X_val
+    dictXy['X_test'] = X_test
+    
+    dictXy['X_train_NLP'] = X_trainNLP
+    dictXy['X_val_NLP'] = X_valNLP
+    dictXy['X_test_NLP'] = X_testNLP
+    
+    dictXy['y_train'] = y_train
+    dictXy['y_val'] = y_val
+    dictXy['y_test'] = y_test
+    
+    dictXy['y_train_cat'] = y_trainNN
+    dictXy['y_val_cat'] = y_valNN
+    dictXy['y_test_cat'] = y_testNN
+    
+    dictXy['y_train_NLP'] = y_trainNLP
+    dictXy['y_val_NLP'] = y_valNLP
+    dictXy['y_test_NLP'] = y_testNLP
+    
+    dictXy['y_train_NLP_cat'] = y_trainNNNLP
+    dictXy['y_val_NLP_cat'] = y_valNNNLP
+    dictXy['y_test_NLP_cat'] = y_testNNNLP
+    
+    return dictXy, counter, inc
+
+def train_NN(noclasses, dictNN, sgd, dictXy, accuracy_NN_test_list,
+             accuracy_NN_val_list, minmax, conf_matrix, label_type):
+    
+    NN_model = modelf(noclasses=noclasses,
+                           no_hidden=dictNN['no_hidden'],
+                           regularizer=dictNN['regularizer'],
+                           activation_fct=dictNN['activation_fct'],
+                           no_layers=dictNN['no_layers'])
+    NN_model.compile(loss=dictNN['loss_fct'],
+                      optimizer=sgd,
+                      metrics=['accuracy'])
+    
+    if label_type == 'NLP':
+        label = '_NLP'
+    else:
+        label = ''
+
+    #fit models to training data actual labels
+    history = NN_model.fit(dictXy[f"X_train{label}"],
+                           dictXy[f"y_train{label}_cat"],
+                           validation_data=(dictXy[f"X_val{label}"],
+                                            dictXy[f"y_val{label}_cat"]),
+                           epochs=dictNN['number_of_epochs'],
+                           batch_size=1)
+    
+    [scoreNNtest, predictedNNtest] = scoreCNNs(dictXy[f"X_test{label}"],
+                                               dictXy[f"y_test{label}_cat"],
+                                               NN_model, noclasses)
+    accuracy_NN_test_list.append(scoreNNtest) 
+    
+    [scoreNNval, predictedNNval] = scoreCNNs (dictXy[f"X_val{label}"],
+                                              dictXy[f"y_val{label}_cat"],
+                                              NN_model, noclasses)
+    accuracy_NN_val_list.append(scoreNNval)
+    
+    if scoreNNtest >= minmax['max']:
+        minmax['max'] = scoreNNtest
+        conf_matrix['conftestmax'] =\
+            confusion_matrix(np.argmax(dictXy[f"y_test{label}_cat"], axis=-1),
+                             np.argmax(predictedNNtest, axis=-1),
+                             labels=list(range(0, noclasses)))
+
+    if scoreNNtest <= minmax['min']:
+        minmax['min'] = scoreNNtest
+        conf_matrix['conftestmin'] =\
+            confusion_matrix(np.argmax(dictXy[f"y_test{label}_cat"], axis=-1),
+                             np.argmax(predictedNNtest, axis=-1),
+                             labels=list(range(0, noclasses)))
+            
+    if scoreNNval >= minmax['maxv']:
+        minmax['maxv'] = scoreNNval
+        conf_matrix['confvalmax'] =\
+            confusion_matrix(np.argmax(dictXy[f"y_val{label}_cat"], axis=-1),
+                             np.argmax(predictedNNval, axis=-1),
+                             labels=list(range(0, noclasses)))
+            
+    if scoreNNval <= minmax['minv']:
+        minmax['minv'] = scoreNNval
+        conf_matrix['confvalmin'] =\
+            confusion_matrix(np.argmax(dictXy[f"y_val{label}_cat"], axis=-1),
+                                       np.argmax(predictedNNval, axis=-1),
+                                       labels=list(range(0, noclasses)))
+
+    return minmax, conf_matrix, history
+
+def train_SVM(noclasses, dictSVM, dictXy, accuracy_SVM_test_list,
+              accuracy_SVM_val_list, minmax, conf_matrix, label_type):
+    
+    if label_type == 'NLP':
+        label = '_NLP'
+    else:
+        label = ''
+        
+    modelSVM = svm.SVC(kernel=dictSVM['kernel'],
+                           C=dictSVM['C'],
+                           gamma=dictSVM['gamma'],
+                           decision_function_shape=dictSVM['decision_function'],
+                           class_weight='balanced')
+    
+    modelSVM.fit(dictXy[f"X_train{label}"], dictXy[f"y_train{label}"])
+    
+    validation = modelSVM.predict(dictXy[f"X_val{label}"])
+    scoreSVMval = accuracy_score(dictXy[f"y_val{label}"], validation, normalize=True)
+    accuracy_SVM_val_list.append(scoreSVMval) 
+    
+    predictedSVM = modelSVM.predict(dictXy[f"X_test{label}"])
+    scoreSVM = accuracy_score(dictXy[f"y_test{label}"], predictedSVM, normalize=True)
+    accuracy_SVM_test_list.append(scoreSVM)
+    
+    if scoreSVM >= minmax['max']:
+        minmax['max'] = scoreSVM
+        conf_matrix['conftestmax'] = confusion_matrix(dictXy[f"y_test{label}"],
+                                                         predictedSVM)
+    if scoreSVM <= minmax['min']:
+        minmax['min'] = scoreSVM
+        conf_matrix['conftestmin'] = confusion_matrix(dictXy[f"y_test{label}"],
+                                                         predictedSVM)
+    if scoreSVMval >= minmax['maxv']:
+        minmax['maxv'] = scoreSVMval
+        conf_matrix['confvalmax'] = confusion_matrix(dictXy[f"y_val{label}"],
+                                                        validation)
+    if scoreSVMval <= minmax['minv']:
+        minmax['minv'] = scoreSVMval
+        conf_matrix['confvalmin'] = confusion_matrix(dictXy[f"y_val{label}"],
+                                                        validation)
+    return minmax, conf_matrix
+
+def train_NB(X_traintot, y_traintot, X_traintotNLP, y_traintotNLP,
+             X_test, y_test, X_testNLP, y_testNLP, f):
+    
+    modelG = GaussianNB()
+    modelG.fit(X_traintot, y_traintot)
+    predictedG = modelG.predict(X_test)
+    scoreG = accuracy_score(y_test, predictedG, normalize=True)
+
+    modelGNLP = GaussianNB()
+    modelGNLP.fit(X_traintotNLP, y_traintotNLP)
+    predictedGNLP = modelGNLP.predict(X_testNLP)
+    scoreGNLP = accuracy_score(y_testNLP, predictedGNLP, normalize=True)
+
+    print("Accuracy NB is:",file=f)
+    print(scoreG,file=f)
+    print("Confusion matrix for Naive Bayes:",file=f)
+    print(confusion_matrix(y_test, predictedG),file=f)
+
+    print("Accuracy NB is:",file=f)
+    print(scoreGNLP,file=f)
+    print("Confusion matrix for Naive Bayes:",file=f)
+    print(confusion_matrix(y_testNLP, predictedGNLP),file=f)
+
+    print(".............................",file=f)
+    
+def print_file_test(type_NN_SVM, type_true_NLP, f,
+               minmax, conf_matrix, accuracy_list):
+    type_dict = {}
+    type_dict ['NN'] = 'Neural Networks'
+    type_dict ['SVM'] = 'SVM'
+    
+    print(f"Test accuracy for {type_dict[type_NN_SVM]} with {type_true_NLP} labels is max:", file=f)
+    print(minmax['max'], file=f)
+    print(f"Test confusion matrix for {type_dict[type_NN_SVM]} with {type_true_NLP} labels is max:", file=f)
+    print(conf_matrix['conftestmax'], file=f)
+    print(f"Test accuracy for {type_dict[type_NN_SVM]} with {type_true_NLP} labels is min:", file=f)
+    print(minmax['min'], file=f)
+    print(f"Test confusion matrix for {type_dict[type_NN_SVM]} with {type_true_NLP} labels is min:", file=f)
+    print(conf_matrix['conftestmin'], file=f)
+    print("Mean test accuracy for 100 runs", file=f)
+    print(mean(accuracy_list), file=f)
+    
+def print_file_val(type_NN_SVM, type_true_NLP, f,
+                   minmax, conf_matrix, accuracy_list):
+    type_dict = {}
+    type_dict ['NN'] = 'Neural Networks'
+    type_dict ['SVM'] = 'SVM'
+    
+    print(f"Validation accuracy for {type_dict[type_NN_SVM]} with {type_true_NLP} labels is max:",
+          file=f)
+    print(minmax['maxv'],file=f)
+    print(f"Validation confusion matrix for {type_dict[type_NN_SVM]} with {type_true_NLP} labels is max:",
+          file=f)
+    print(conf_matrix['confvalmax'],file=f)
+    print(f"Validation accuracy for {type_dict[type_NN_SVM]} with {type_true_NLP} labels is min:",
+          file=f)
+    print(minmax['minv'],file=f)
+    print(f"Test confusion matrix for {type_dict[type_NN_SVM]} with {type_true_NLP} labels is min:",
+          file=f)
+    print(conf_matrix['confvalmin'],file=f)
+    print("Mean validation accuracy for 100 runs",file=f)
+    print(mean(accuracy_list),file=f)
+    
+    
