@@ -195,7 +195,9 @@ while number_of_tests >= 1:
         newfile = f"C:/Users/Andreea/coding/4yp/{counter}.txt"
         fi = open(newfile, 'w')
         fi.close() 
-
+        callback = tf.keras.callbacks.EarlyStopping(monitor='val_loss',
+                                                    patience=8,
+                                                    restore_best_weights=True)
         [dictXy, counter, inc] = train_val_split_stratify(counter, inc,
                                                           X_traintot,
                                                           y_traintot,
@@ -213,6 +215,7 @@ while number_of_tests >= 1:
         minmax_NN, conf_matrix_NN, history = train_NN(noclasses, dictNN, sgd,
                                                       dictXy,
                                                       accuracy_NN_test_list,
+                                                      callback,
                                                       accuracy_NN_val_list,
                                                       minmax_NN,
                                                       conf_matrix_NN, 
@@ -222,6 +225,7 @@ while number_of_tests >= 1:
                                                                   dictNN, sgd,
                                                                   dictXy,
                                                                   accuracy_NN_test_list_NLP,
+                                                                  callback,
                                                                   accuracy_NN_val_list_NLP,
                                                                   minmax_NN_NLP,
                                                                   conf_matrix_NN_NLP, 

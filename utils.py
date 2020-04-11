@@ -599,12 +599,12 @@ def features_list(mycursor, ID):
     dict_sensors['GSR'] = 'gsr2'
     dict_sensors['Acc'] = 'FEAT2'
     dict_sensors['Hum'] = 'hum3'
-    dict_sensors['Temp'] = 'tempd3'
+    dict_sensors['Temp'] = 'tempd5'
     
     features = []
     features.append(ID)
     for sensor in ['GSR', 'Acc', 'Hum', 'Temp']:
-        sql = f"select * from {dict_sensors[sensor]} where ID='"+ID+"'"
+        sql = f"select * from {dict_sensors[sensor]} where ID='" + ID + "'"
         mycursor.execute(sql)
         data = mycursor.fetchall()
         for el in data[0][1:]:
@@ -624,7 +624,7 @@ def normalise(Xa, lengt):
     Xa = Xa.astype(np.float64)
     Xnew = np.transpose(Xa)
     XSVM = np.empty([lengt, 73])
-    for i in range(0,73):
+    for i in range(0, 73):
         mini = min(Xnew[i])
         maxi = max(Xnew[i])
         for j in range(0, lengt):
@@ -746,7 +746,7 @@ def train_val_split_stratify(counter, inc, X_traintot, y_traintot,
     
     return dictXy, counter, inc
 
-def train_NN(noclasses, dictNN, sgd, dictXy, accuracy_NN_test_list,
+def train_NN(noclasses, dictNN, sgd, dictXy, accuracy_NN_test_list, callback,
              accuracy_NN_val_list, minmax, conf_matrix, label_type):
     
     NN_model = modelf(noclasses=noclasses,
@@ -769,6 +769,7 @@ def train_NN(noclasses, dictNN, sgd, dictXy, accuracy_NN_test_list,
                            validation_data=(dictXy[f"X_val{label}"],
                                             dictXy[f"y_val{label}_cat"]),
                            epochs=dictNN['number_of_epochs'],
+                           callbacks=[callback],
                            batch_size=1)
     
     [scoreNNtest, predictedNNtest] = scoreCNNs(dictXy[f"X_test{label}"],
