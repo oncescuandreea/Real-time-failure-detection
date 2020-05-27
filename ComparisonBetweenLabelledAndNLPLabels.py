@@ -81,20 +81,20 @@ final = pd.DataFrame(listTFIDF)
 name2id = name_to_id(mycursor)
 
 num_clusters = 7
-number_of_tests = 1
+number_of_tests = 2
 
 avg = 0
 
 list_of_params, list_of_paramsSVM = get_parameter_sets(number_of_tests)
 
-while number_of_tests >= 1:
+while number_of_tests >= 2:
     
     no_labeled_sets = number_of_tests
     tf.compat.v1.reset_default_graph()
     tf.random.set_seed(0)
     np.random.seed(0)
     random.seed(0)
-    [test, testlabels, _] =\
+    [test, _, _] =\
             get_data_from_different_labels_for_cluster_initialisation(no_labeled_sets,
                                                                       name2id,
                                                                       final,
@@ -124,7 +124,7 @@ while number_of_tests >= 1:
 
     mycursor = cnx.cursor()
     
-    y, yNLP, XSVM = labels_and_features(mycursor,
+    y, yNLP, X_normalised = labels_and_features(mycursor,
                                         name2id,
                                         reportName2cluster,
                                         lengt)
@@ -137,12 +137,19 @@ while number_of_tests >= 1:
     maxG = 0
     minG = 1
 
-    X_traintotNLP, X_testNLP, y_traintotNLP, y_testNLP = train_test_split(XSVM, indicesNLP, test_size=0.2, random_state=32)
-    X_traintot, X_test, y_traintot, y_test = train_test_split(XSVM, indices, test_size=0.2, random_state=32)
+    X_traintotNLP, X_testNLP, y_traintotNLP, y_testNLP = train_test_split(X_normalised,
+                                                                          indicesNLP,
+                                                                          test_size=0.2,
+                                                                          random_state=32)
+    
+    X_traintot, X_test, y_traintot, y_test = train_test_split(X_normalised,
+                                                              indices,
+                                                              test_size=0.2,
+                                                              random_state=32)
 
     
-    accuracy_NN_test_list = [] #list of test accuracies
-    accuracy_NN_val_list = [] #list of validation accuracies
+    accuracy_NN_test_list = [] #list of NN test accuracies
+    accuracy_NN_val_list = [] #list of NN validation accuracies
     accuracy_NN_test_list_NLP = []
     accuracy_NN_val_list_NLP = [] 
     accuracy_SVM_test_list = [] #list of SVM accuracy on test data
@@ -191,8 +198,8 @@ while number_of_tests >= 1:
     
     print(number_of_tests)
     
-    while counter < 1:
-        newfile = f"C:/Users/Andreea/coding/4yp/{counter}.txt"
+    while counter < 100:
+        newfile = f"C:/Users/Andreea/coding/4yp/{counter}_{number_of_tests}.txt"
         fi = open(newfile, 'w')
         fi.close() 
         callback = tf.keras.callbacks.EarlyStopping(monitor='val_loss',
@@ -220,6 +227,8 @@ while number_of_tests >= 1:
                                                       minmax_NN,
                                                       conf_matrix_NN, 
                                                       label_type='NN')
+        if minmax_NN == conf_matrix_NN == history:
+            continue
         
         minmax_NN_NLP, conf_matrix_NN_NLP, history_NLP = train_NN(noclasses,
                                                                   dictNN, sgd,
@@ -262,7 +271,7 @@ while number_of_tests >= 1:
     print_file_test('NN', 'NLP', f, minmax_NN_NLP, conf_matrix_NN_NLP,
                     accuracy_NN_test_list_NLP)
     
-    print(".............................",file=f)
+    print(".............................", file=f)
 
     print_file_val('NN', 'real', f, minmax_NN, conf_matrix_NN,
                     accuracy_NN_val_list)

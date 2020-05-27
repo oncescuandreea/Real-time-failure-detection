@@ -209,12 +209,12 @@ def get_data_from_different_labels_for_cluster_initialisation(no_labeled_sets,
                 recorddataID[random_sample_report][4] + \
                 recorddataID[random_sample_report][2]
         
-        report_name=corrdict[ID] # get the corresponding report name from ID
+        report_name = corrdict[ID] # get the corresponding report name from ID
         
         # if the numbre of required labeled documents of each type has not been
         # reached, then add label to label_only_once if it has not been met 
         # before and add it to the list with all labels so far
-        if labels_tot.count(label)<no_labeled_sets:
+        if labels_tot.count(label) < no_labeled_sets:
             if label not in label_only_once:
                 label_only_once.append(label)
             labels_tot.append(label)
@@ -224,18 +224,18 @@ def get_data_from_different_labels_for_cluster_initialisation(no_labeled_sets,
             index_labels.append(indexname.index(report_name))
             
     # initialise list containing the cluer center values
-    cluster_center_average=[]
+    cluster_center_average = []
     
     # for each type of failure/document find all corresponding indexes and
     # add up the corresponding tfidf vectors
     for label in label_only_once:
         location_of_labels = [i for i, labell in enumerate(labels_tot) if
-                  labell == label]
+                              labell == label]
         sum_tfidf_scores = 0
         for location in location_of_labels:
             sum_tfidf_scores=sum_tfidf_scores+np.asarray(final.loc[index_labels[location],:])
         cluster_center_average.append(sum_tfidf_scores/no_labeled_sets)
-
+            
     return [index_labels, labels_tot, cluster_center_average]
 
 def kmeans_clustering(num_clusters,
@@ -271,7 +271,7 @@ def kmeans_clustering(num_clusters,
             numberOfLabelsProvided = "1 set of labels"
         else:
             numberOfLabelsProvided = str(no_labeled_sets) + " sets of labels"
-        [_,_,arrayn] =\
+        [_, _, arrayn] =\
         get_data_from_different_labels_for_cluster_initialisation(no_labeled_sets,
                                                                   corrdict,
                                                                   final,
@@ -375,16 +375,16 @@ def get_parameters(random, list_of_params, list_of_paramsSVM, number_of_tests, f
     dictNN = {}
     dictSVM = {}
     if random == 'False':
-        dictNN['no_hidden'] = 206 #used to be 140 best 180
-        dictNN['no_layers'] = 3 #used to be 2
-        dictNN['activation_fct'] = 'tanh' #used to be relu
-        dictNN['regularizer'] = 0.0010990990990990992 # used to be 0.01
-        dictNN['learning_rate'] = 0.01221131131131131 #used to be 0.01
-        dictNN['number_of_epochs'] = 154 #used to be 130 # 154
+        dictNN['no_hidden'] = 189 #used to be 140 best 180
+        dictNN['no_layers'] = 2 #used to be 2
+        dictNN['activation_fct'] = 'relu' #used to be relu
+        dictNN['regularizer'] = 0.0019909909909909913 # used to be 0.01
+        dictNN['learning_rate'] = 0.01703193193193193 #used to be 0.01
+        dictNN['number_of_epochs'] = 159 #used to be 130 # 154
         
         dictSVM['kernel'] = 'sigmoid' #used to be linear
-        dictSVM['C'] = 10000 # used to be 1
-        dictSVM['gamma'] = 'scale' # used to be 1
+        dictSVM['C'] = 1000 # used to be 1
+        dictSVM['gamma'] = 'auto' # used to be 1
         dictSVM['decision_function'] = 'ovo' #as in report
     else:
         dictNN['no_hidden'] = list_of_params[number_of_tests][0]
@@ -572,7 +572,7 @@ def NLP_labels_analysis(num_clusters,
     now = datetime.now()
     current_time = now.strftime("%H_%M_%S")
     current_date = now.date()
-    newdir = "C:/Users/Andreea/OneDrive - Nexus365/Results/Results_"+str(current_date) + "_"+current_time
+    newdir = "C:/Users/Andreea/Results/Results_"+str(current_date) + "_"+current_time
     os.mkdir(newdir)
     f = open(newdir+"/results.txt", 'w')
     for i in range(0,7):
@@ -665,8 +665,18 @@ def labels_and_features(mycursor, name2id, reportName2cluster, lengt):
 
         features = features_list(mycursor, ID)
         Xa.append(features[1:])
-
-    XSVM = normalise(Xa, lengt)
+    
+    #add to features and labels the ones for the case when everything works
+    # choose only 15 from the table
+    sql_data_working = "select * from feat_working"
+    mycursor.execute(sql_data_working)
+    working_data = mycursor.fetchall()
+    for i in range(0, 15):
+        Xa.append(list(working_data[0][1:]))
+        yNLP.append(7)
+        y.append('workingworkingworkingworking')
+    
+    XSVM = normalise(Xa, lengt+15)
     return y, yNLP, XSVM
 
 def train_val_split_stratify(counter, inc, X_traintot, y_traintot,
@@ -764,14 +774,16 @@ def train_NN(noclasses, dictNN, sgd, dictXy, accuracy_NN_test_list, callback,
         label = ''
 
     #fit models to training data actual labels
-    history = NN_model.fit(dictXy[f"X_train{label}"],
-                           dictXy[f"y_train{label}_cat"],
-                           validation_data=(dictXy[f"X_val{label}"],
-                                            dictXy[f"y_val{label}_cat"]),
-                           epochs=dictNN['number_of_epochs'],
-                           callbacks=[callback],
-                           batch_size=1)
-    
+    try:
+        history = NN_model.fit(dictXy[f"X_train{label}"],
+                               dictXy[f"y_train{label}_cat"],
+                               validation_data=(dictXy[f"X_val{label}"],
+                                                dictXy[f"y_val{label}_cat"]),
+                               epochs=dictNN['number_of_epochs'],
+                               callbacks=[callback],
+                               batch_size=1)
+    except TypeError:
+        return 0, 0 ,0
     [scoreNNtest, predictedNNtest] = scoreCNNs(dictXy[f"X_test{label}"],
                                                dictXy[f"y_test{label}_cat"],
                                                NN_model, noclasses)
@@ -893,7 +905,7 @@ def print_file_test(type_NN_SVM, type_true_NLP, f,
     print(minmax['min'], file=f)
     print(f"Test confusion matrix for {type_dict[type_NN_SVM]} with {type_true_NLP} labels is min:", file=f)
     print(conf_matrix['conftestmin'], file=f)
-    print("Mean test accuracy for 100 runs", file=f)
+    print(f"Mean test accuracy for {type_dict[type_NN_SVM]} with {type_true_NLP} for 100 runs", file=f)
     print(mean(accuracy_list), file=f)
     
 def print_file_val(type_NN_SVM, type_true_NLP, f,
@@ -904,17 +916,17 @@ def print_file_val(type_NN_SVM, type_true_NLP, f,
     
     print(f"Validation accuracy for {type_dict[type_NN_SVM]} with {type_true_NLP} labels is max:",
           file=f)
-    print(minmax['maxv'],file=f)
+    print(minmax['maxv'], file=f)
     print(f"Validation confusion matrix for {type_dict[type_NN_SVM]} with {type_true_NLP} labels is max:",
           file=f)
-    print(conf_matrix['confvalmax'],file=f)
+    print(conf_matrix['confvalmax'], file=f)
     print(f"Validation accuracy for {type_dict[type_NN_SVM]} with {type_true_NLP} labels is min:",
           file=f)
-    print(minmax['minv'],file=f)
+    print(minmax['minv'], file=f)
     print(f"Test confusion matrix for {type_dict[type_NN_SVM]} with {type_true_NLP} labels is min:",
           file=f)
-    print(conf_matrix['confvalmin'],file=f)
-    print("Mean validation accuracy for 100 runs",file=f)
+    print(conf_matrix['confvalmin'], file=f)
+    print(f"Mean validation accuracy for {type_dict[type_NN_SVM]} with {type_true_NLP} for 100 runs", file=f)
     print(mean(accuracy_list),file=f)
     
     
