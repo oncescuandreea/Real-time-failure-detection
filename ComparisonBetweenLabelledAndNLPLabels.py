@@ -63,7 +63,7 @@ from utils import print_file_test, print_file_val, train_NB
 
 
 #connect to database
-cnx = mysql.connector.connect(user='root', password='Amonouaparola213',
+cnx = mysql.connector.connect(user='root', password='sqlAmonouaparola213',
                           host='127.0.0.1',
                           database='final')
 
@@ -81,17 +81,17 @@ final = pd.DataFrame(listTFIDF)
 name2id = name_to_id(mycursor)
 
 num_clusters = 7
-number_of_tests = 2
+number_of_tests = 1
 
 avg = 0
 
 list_of_params, list_of_paramsSVM = get_parameter_sets(number_of_tests)
 
-while number_of_tests >= 2:
+while number_of_tests >= 0:
     
     no_labeled_sets = number_of_tests
     tf.compat.v1.reset_default_graph()
-    tf.random.set_seed(0)
+    tf.random.set_random_seed(0)
     np.random.seed(0)
     random.seed(0)
     [test, _, _] =\
@@ -198,8 +198,8 @@ while number_of_tests >= 2:
     
     print(number_of_tests)
     
-    while counter < 100:
-        newfile = f"C:/Users/Andreea/coding/4yp/{counter}_{number_of_tests}.txt"
+    while counter < 1:
+        newfile = f"C:/Users/oncescu/coding/4yp/{counter}_{number_of_tests}.txt"
         fi = open(newfile, 'w')
         fi.close() 
         callback = tf.keras.callbacks.EarlyStopping(monitor='val_loss',
@@ -219,16 +219,16 @@ while number_of_tests >= 2:
                              nesterov=False) #used to be lr 0.01
 
         
-        minmax_NN, conf_matrix_NN, history = train_NN(noclasses, dictNN, sgd,
-                                                      dictXy,
-                                                      accuracy_NN_test_list,
-                                                      callback,
-                                                      accuracy_NN_val_list,
-                                                      minmax_NN,
-                                                      conf_matrix_NN, 
-                                                      label_type='NN')
-        if minmax_NN == conf_matrix_NN == history:
-            continue
+        # minmax_NN, conf_matrix_NN, history = train_NN(noclasses, dictNN, sgd,
+        #                                               dictXy,
+        #                                               accuracy_NN_test_list,
+        #                                               callback,
+        #                                               accuracy_NN_val_list,
+        #                                               minmax_NN,
+        #                                               conf_matrix_NN,
+        #                                               label_type='NN')
+        # if minmax_NN == conf_matrix_NN == history:
+        #     continue
         
         minmax_NN_NLP, conf_matrix_NN_NLP, history_NLP = train_NN(noclasses,
                                                                   dictNN, sgd,
@@ -242,12 +242,12 @@ while number_of_tests >= 2:
         
     # =============================================================================
         
-        minmax_SVM, conf_matrix_SVM = train_SVM(noclasses, dictSVM, dictXy,
-                                                accuracy_SVM_test_list,
-                                                accuracy_SVM_val_list,
-                                                minmax_SVM,
-                                                conf_matrix_SVM,
-                                                label_type='NN')
+        # minmax_SVM, conf_matrix_SVM = train_SVM(noclasses, dictSVM, dictXy,
+        #                                         accuracy_SVM_test_list,
+        #                                         accuracy_SVM_val_list,
+        #                                         minmax_SVM,
+        #                                         conf_matrix_SVM,
+        #                                         label_type='NN')
 
         minmax_SVM_NLP, conf_matrix_SVM_NLP = train_SVM(noclasses, dictSVM, dictXy,
                                                         accuracy_SVM_test_list_NLP,
@@ -266,15 +266,15 @@ while number_of_tests >= 2:
     # =============================================================================
 
     
-    print_file_test('NN', 'real', f, minmax_NN, conf_matrix_NN,
-                    accuracy_NN_test_list)
+    # print_file_test('NN', 'real', f, minmax_NN, conf_matrix_NN,
+    #                 accuracy_NN_test_list)
     print_file_test('NN', 'NLP', f, minmax_NN_NLP, conf_matrix_NN_NLP,
                     accuracy_NN_test_list_NLP)
     
     print(".............................", file=f)
 
-    print_file_val('NN', 'real', f, minmax_NN, conf_matrix_NN,
-                    accuracy_NN_val_list)
+    # print_file_val('NN', 'real', f, minmax_NN, conf_matrix_NN,
+    #                 accuracy_NN_val_list)
     print_file_val('NN', 'NLP', f, minmax_NN_NLP, conf_matrix_NN_NLP,
                     accuracy_NN_val_list_NLP)
 
@@ -282,15 +282,15 @@ while number_of_tests >= 2:
 
     # =============================================================================
     
-    print_file_test('SVM', 'real', f, minmax_SVM, conf_matrix_SVM,
-                    accuracy_SVM_test_list)
+    # print_file_test('SVM', 'real', f, minmax_SVM, conf_matrix_SVM,
+    #                 accuracy_SVM_test_list)
     print_file_test('SVM', 'NLP', f, minmax_SVM_NLP, conf_matrix_SVM_NLP,
                     accuracy_SVM_test_list_NLP)
     
     print(".............................", file=f)
 
-    print_file_val('SVM', 'real', f, minmax_SVM, conf_matrix_SVM,
-                    accuracy_SVM_val_list)
+    # print_file_val('SVM', 'real', f, minmax_SVM, conf_matrix_SVM,
+    #                 accuracy_SVM_val_list)
     print_file_val('SVM', 'NLP', f, minmax_SVM_NLP, conf_matrix_SVM_NLP,
                     accuracy_SVM_val_list_NLP)
 
@@ -301,14 +301,14 @@ while number_of_tests >= 2:
 # =============================================================================
 #     plt.figure(1) # added line compared to previous laptop
 # =============================================================================
-    plt.plot(history.history['accuracy']) # before it was accuracy/acc in between quotes
-    plt.plot(history.history['val_accuracy']) # before it was val_accuracy in between quotes)
-    plt.title('Accuracy on train and validation data')
-    plt.ylabel('accuracy')
-    plt.xlabel('epoch')
-    plt.legend(['train', 'validation'], loc='upper left')
-    plt.savefig(newdir+"/NN_Accuracy_train_val.png", dpi=1200)
-    plt.show()
+#     plt.plot(history.history['accuracy']) # before it was accuracy/acc in between quotes
+#     plt.plot(history.history['val_accuracy']) # before it was val_accuracy in between quotes)
+#     plt.title('Accuracy on train and validation data')
+#     plt.ylabel('accuracy')
+#     plt.xlabel('epoch')
+#     plt.legend(['train', 'validation'], loc='upper left')
+#     plt.savefig(newdir+"/NN_Accuracy_train_val.png", dpi=1200)
+#     plt.show()
 
 # =============================================================================
 #     plt.figure(2) # added line compared to previous laptop
@@ -326,14 +326,14 @@ while number_of_tests >= 2:
 # =============================================================================
 #     plt.figure(3) # added line compared to previous laptop
 # =============================================================================
-    plt.plot(history.history['loss'])
-    plt.plot(history.history['val_loss'])
-    plt.title('Loss function value for train and validation data')
-    plt.ylabel('loss')
-    plt.xlabel('epoch')
-    plt.legend(['train', 'validation'], loc='upper right')
-    plt.savefig(newdir+"/NN_Loss_train_val.png", dpi=1200)
-    plt.show()
+#     plt.plot(history.history['loss'])
+#     plt.plot(history.history['val_loss'])
+#     plt.title('Loss function value for train and validation data')
+#     plt.ylabel('loss')
+#     plt.xlabel('epoch')
+#     plt.legend(['train', 'validation'], loc='upper right')
+#     plt.savefig(newdir+"/NN_Loss_train_val.png", dpi=1200)
+#     plt.show()
 
 # =============================================================================
 #     plt.figure(4) # added line compared to previous laptop
@@ -351,23 +351,23 @@ while number_of_tests >= 2:
 #     plt.figure(5)  # added line compared to previous laptop
 # =============================================================================
     
-    plt.plot(accuracy_NN_val_list)
-    plt.plot(accuracy_NN_test_list)
-    plt.title('NN accuracy on validation and test data given real labels')
-    plt.ylabel('Accuracy')
-    plt.xlabel('Number of runs')
-    plt.legend(['validation', 'test'], loc='upper left')
-    plt.savefig(newdir+"/NN_Validation_vs_test.png", dpi=1200)
-    plt.show()
+    # plt.plot(accuracy_NN_val_list)
+    # plt.plot(accuracy_NN_test_list)
+    # plt.title('NN accuracy on validation and test data given real labels')
+    # plt.ylabel('Accuracy')
+    # plt.xlabel('Number of runs')
+    # plt.legend(['validation', 'test'], loc='upper left')
+    # plt.savefig(newdir+"/NN_Validation_vs_test.png", dpi=1200)
+    # plt.show()
     
-    plt.plot(accuracy_SVM_val_list)
-    plt.plot(accuracy_SVM_test_list)
-    plt.title('SVM accuracy on validation and test data')
-    plt.ylabel('Accuracy')
-    plt.xlabel('Number of runs')
-    plt.legend(['validation', 'test'], loc='upper left')
-    plt.savefig(newdir+"/SVM_Validation_vs_test.png", dpi=1200)
-    plt.show()
+    # plt.plot(accuracy_SVM_val_list)
+    # plt.plot(accuracy_SVM_test_list)
+    # plt.title('SVM accuracy on validation and test data')
+    # plt.ylabel('Accuracy')
+    # plt.xlabel('Number of runs')
+    # plt.legend(['validation', 'test'], loc='upper left')
+    # plt.savefig(newdir+"/SVM_Validation_vs_test.png", dpi=1200)
+    # plt.show()
     
 # =============================================================================
 # print(f"Average accuracy on validation is: {avg}")

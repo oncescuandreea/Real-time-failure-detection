@@ -128,7 +128,7 @@ def prepro(file):
 # now move data to sql
 ####################################################################
 #connect to database
-cnx = mysql.connector.connect(user='root', password='Amonouaparola213',
+cnx = mysql.connector.connect(user='root', password='sqlAmonouaparola213',
                           host='127.0.0.1',
                           database='final')
 #get data from temperature sensor
@@ -186,7 +186,7 @@ final=pd.DataFrame(listTFIDF) #create dataframe using pandas for visualisation c
 count=0 #counter to keep track of how many documents have been processed 
 for namerep in results:
     
-    file = 'Reports/'+namerep[0]
+    file = "C:/Users/oncescu/OneDrive - Nexus365/Reports/"+namerep[0]
     vec=prepro(file)
     text = docxpy.process(file)
     vnewnew=[] # new list of words with any tfidf 

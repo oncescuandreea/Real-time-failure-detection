@@ -246,7 +246,7 @@ def kmeans_clustering(num_clusters,
                       cnx,
 ):
     '''
-    Function returning the predicted labeled for each indexed document
+    Function returning the predicted label for each indexed document
     Inputs:
         num_clusters - number of classes
         no_labeled_sets - how many sets of labels are manually provided
@@ -572,7 +572,8 @@ def NLP_labels_analysis(num_clusters,
     now = datetime.now()
     current_time = now.strftime("%H_%M_%S")
     current_date = now.date()
-    newdir = "C:/Users/Andreea/Results/Results_"+str(current_date) + "_"+current_time
+    # newdir = "C:/Users/Andreea/Results/Results_"+str(current_date) + "_"+current_time
+    newdir = "C:/Users/oncescu/data/4yp/Results_" + str(current_date) + "_" + current_time
     os.mkdir(newdir)
     f = open(newdir+"/results.txt", 'w')
     for i in range(0,7):
@@ -879,17 +880,17 @@ def train_NB(X_traintot, y_traintot, X_traintotNLP, y_traintotNLP,
     predictedGNLP = modelGNLP.predict(X_testNLP)
     scoreGNLP = accuracy_score(y_testNLP, predictedGNLP, normalize=True)
 
-    print("Accuracy NB is:",file=f)
-    print(scoreG,file=f)
-    print("Confusion matrix for Naive Bayes:",file=f)
-    print(confusion_matrix(y_test, predictedG),file=f)
+    print("Accuracy NB is:", file=f)
+    print(scoreG, file=f)
+    print("Confusion matrix for Naive Bayes:", file=f)
+    print(confusion_matrix(y_test, predictedG), file=f)
 
     print("Accuracy NB is:",file=f)
-    print(scoreGNLP,file=f)
-    print("Confusion matrix for Naive Bayes:",file=f)
-    print(confusion_matrix(y_testNLP, predictedGNLP),file=f)
+    print(scoreGNLP, file=f)
+    print("Confusion matrix for NLP Naive Bayes:", file=f)
+    print(confusion_matrix(y_testNLP, predictedGNLP), file=f)
 
-    print(".............................",file=f)
+    print(".............................", file=f)
     
 def print_file_test(type_NN_SVM, type_true_NLP, f,
                minmax, conf_matrix, accuracy_list):

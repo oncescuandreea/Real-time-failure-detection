@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 """
 Created on Sat Apr 11 23:46:57 2020
-
+File used to generate an sql table containing random sets of
+working conditions data. It does so by randomly picking failure
+datasets and taking the numbers correspodning to features of working
+sensors and then concatenating them.
 @author: Andreea
 """
 
