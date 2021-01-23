@@ -112,56 +112,56 @@ def categoric(y_train, y_val, y_test):
     return y_trainNN, y_valNN, y_testNN
 
 
-def scoreCNNs(X, y, model, noclasses):
-    '''
+def score_nn(X: np.ndarray, y: np.ndarray, model: Sequential, number_classes: int):
+    """
     Function returning the accuracy score for the artificial neural networks
     Inputs:
         X - features
         y - numerical labels
         model - NN model
-        noclasses - number of classes
+        number_classes - number of classes
     Outputs:
-        scoreNN - accuracy score
-        predictedCNN1 - label prediction
-    '''
-    p1 = model.predict(X)
-    predictedCNN1 = []
-    for row in p1:
-        pCNN1 = []
-        for i in range(0, noclasses):
-            pCNN1.append(0)
-        pCNN1[np.argmax(row)] = 1
-        predictedCNN1.append(pCNN1)
-    predictedCNN1 = np.asarray(predictedCNN1)
-    predictedCNN1 = predictedCNN1.astype(np.float32)
+        accuracy__nn - accuracy score
+        predicted_cnn1 - label prediction
+    """
+    model_predictions = model.predict(X)
+    predicted_cnn1 = []
+    for row in model_predictions:
+        one_hot_row_prediction = []
+        for i in range(0, number_classes):
+            one_hot_row_prediction.append(0)
+        one_hot_row_prediction[np.argmax(row)] = 1
+        predicted_cnn1.append(one_hot_row_prediction)
+    predicted_cnn1 = np.asarray(predicted_cnn1)
+    predicted_cnn1 = predicted_cnn1.astype(np.float32)
 
-    scoreNN = accuracy_score(y, predictedCNN1, normalize=True)  # calculate accuracy score on test data
-    return scoreNN, predictedCNN1
+    accuracy__nn = accuracy_score(y, predicted_cnn1, normalize=True)  # calculate accuracy score on test data
+    return accuracy__nn, predicted_cnn1
 
 
-def modelf(noclasses, no_hidden, regularizer, activation_fct, no_layers):
-    '''
+def modelf(number_classes, no_hidden, regularizer, activation_fct, no_layers):
+    """
     Function creates a ANN model based on the variable given by the user
     Inputs:
-        noclasses - number of classes corresponding to number of output nodes
+        number_classes - number of classes corresponding to number of output nodes
         no_hidden - number of nodes in the hidden layers
         regularizer - value of the regularizer to be used
         activation_fct - activation function for the hidden layers
         no_layers - number of hidden layers
     Outputs:
-        modelNN - Neural network model
-    '''
-    modelNN = Sequential()
+        model_nn - Neural network model
+    """
+    model_nn = Sequential()
     np.random.seed(0)
-    modelNN.add(
+    model_nn.add(
         Dense(no_hidden, input_dim=73, activation=activation_fct, kernel_regularizer=regularizers.l2(regularizer)))
     if no_layers > 1:
         no_layers -= 1
         for i in range(0, no_layers):
-            modelNN.add(Dense(no_hidden, activation=activation_fct, kernel_regularizer=regularizers.l2(regularizer)))
+            model_nn.add(Dense(no_hidden, activation=activation_fct, kernel_regularizer=regularizers.l2(regularizer)))
 
-    modelNN.add(Dense(noclasses, activation='softmax'))
-    return modelNN
+    model_nn.add(Dense(number_classes, activation='softmax'))
+    return model_nn
 
 
 def get_data_from_different_labels_for_cluster_initialisation(no_labeled_sets,
@@ -342,7 +342,7 @@ def get_parameter_sets(number_of_tests):
     Outputs:
         list_of_paramsNN [number_of_tests x 6] - list of randomly chosen 
             hyperparameters for the neural network
-        list_of_paramsSVM [number_of_tests x 4] - list of randomly chosen 
+        list_of_params_svm [number_of_tests x 4] - list of randomly chosen 
             hyperparameters for the SVM
     '''
     # NN randomly chosen parameters
@@ -351,14 +351,14 @@ def get_parameter_sets(number_of_tests):
         list_of_paramsNN.append(parametersNN())
 
     # SVM randomly chosen parameters
-    list_of_paramsSVM = []
+    list_of_params_svm = []
     for i in range(0, number_of_tests + 1):
-        list_of_paramsSVM.append(parametersSVM())
+        list_of_params_svm.append(parametersSVM())
 
-    return list_of_paramsNN, list_of_paramsSVM
+    return list_of_paramsNN, list_of_params_svm
 
 
-def get_parameters(random, list_of_params, list_of_paramsSVM, number_of_tests, file):
+def get_parameters(random, list_of_params, list_of_params_svm, number_of_tests, file):
     '''
     Function returning two dictionaries with the chosen hyperparameters for NN
     and for the SVM. It also prints to the file the values
@@ -367,85 +367,87 @@ def get_parameters(random, list_of_params, list_of_paramsSVM, number_of_tests, f
                    False to use best hyperparameters found so far
         list_of_params [number_of_tests x 6] - list of lists containing NN 
             hyperparameters
-        list_of_paramsSVM [number_of_tests x 4] - list of lists containing SVM
+        list_of_params_svm [number_of_tests x 4] - list of lists containing SVM
             hyperparameters
         number_of_tests - number of sets of randomly chosen parameters 
             corresponding to the number of times the scrips will be run
         file - file to which hyperparameters are written
     Outputs:
-        dictNN - dictionary with hyperparameters for NN
-        dictSVM - dictionary with hyperparameters for SVM
+        dict_nn - dictionary with hyperparameters for NN
+        dict_svm - dictionary with hyperparameters for SVM
     '''
-    dictNN = {}
-    dictSVM = {}
+    dict_nn = {}
+    dict_svm = {}
     if random == 'False':
-        dictNN['no_hidden'] = 189  # used to be 140 best 180
-        dictNN['no_layers'] = 2  # used to be 2
-        dictNN['activation_fct'] = 'relu'  # used to be relu
-        dictNN['regularizer'] = 0.0019909909909909913  # used to be 0.01
-        dictNN['learning_rate'] = 0.01703193193193193  # used to be 0.01
-        dictNN['number_of_epochs'] = 159  # used to be 130 # 154
+        dict_nn['no_hidden'] = 189  # used to be 140 best 180
+        dict_nn['no_layers'] = 2  # used to be 2
+        dict_nn['activation_fct'] = 'relu'  # used to be relu
+        dict_nn['regularizer'] = 0.0019909909909909913  # used to be 0.01
+        dict_nn['learning_rate'] = 0.01703193193193193  # used to be 0.01
+        dict_nn['number_of_epochs'] = 159  # used to be 130 # 154
 
-        dictSVM['kernel'] = 'sigmoid'  # used to be linear
-        dictSVM['C'] = 1000  # used to be 1
-        dictSVM['gamma'] = 'auto'  # used to be 1
-        dictSVM['decision_function'] = 'ovo'  # as in report
+        dict_svm['kernel'] = 'sigmoid'  # used to be linear
+        dict_svm['C'] = 1000  # used to be 1
+        dict_svm['gamma'] = 'auto'  # used to be 1
+        dict_svm['decision_function'] = 'ovo'  # as in report
     else:
-        dictNN['no_hidden'] = list_of_params[number_of_tests][0]
-        dictNN['no_layers'] = list_of_params[number_of_tests][1]
-        dictNN['activation_fct'] = list_of_params[number_of_tests][2]
-        dictNN['regularizer'] = list_of_params[number_of_tests][3]
-        dictNN['learning_rate'] = list_of_params[number_of_tests][4]
-        dictNN['number_of_epochs'] = list_of_params[number_of_tests][5]
+        dict_nn['no_hidden'] = list_of_params[number_of_tests][0]
+        dict_nn['no_layers'] = list_of_params[number_of_tests][1]
+        dict_nn['activation_fct'] = list_of_params[number_of_tests][2]
+        dict_nn['regularizer'] = list_of_params[number_of_tests][3]
+        dict_nn['learning_rate'] = list_of_params[number_of_tests][4]
+        dict_nn['number_of_epochs'] = list_of_params[number_of_tests][5]
 
-        dictSVM['kernel'] = list_of_paramsSVM[number_of_tests][0]
-        dictSVM['C'] = list_of_paramsSVM[number_of_tests][1]
-        dictSVM['gamma'] = list_of_paramsSVM[number_of_tests][2]
-        dictSVM['decision_function'] = list_of_paramsSVM[number_of_tests][3]
+        dict_svm['kernel'] = list_of_params_svm[number_of_tests][0]
+        dict_svm['C'] = list_of_params_svm[number_of_tests][1]
+        dict_svm['gamma'] = list_of_params_svm[number_of_tests][2]
+        dict_svm['decision_function'] = list_of_params_svm[number_of_tests][3]
 
-    dictNN['loss_fct'] = 'categorical_crossentropy'  # used to be categorical crossentropy
-    dictNN['decay_set'] = 1e-2 / dictNN['number_of_epochs']  # used to be 1e-2/number_of_epochs
+    dict_nn['loss_fct'] = 'categorical_crossentropy'  # used to be categorical crossentropy
+    dict_nn['decay_set'] = 1e-2 / dict_nn['number_of_epochs']  # used to be 1e-2/number_of_epochs
 
     print(file=file)
-    print("No of hidden nodes: " + str(dictNN['no_hidden']), file=file)
+    print("No of hidden nodes: " + str(dict_nn['no_hidden']), file=file)
     print(file=file)
-    print("Value of regularizer term " + str(dictNN['regularizer']), file=file)
+    print("Value of regularizer term " + str(dict_nn['regularizer']), file=file)
     print(file=file)
-    print("Activation function is " + dictNN['activation_fct'], file=file)
+    print("Activation function is " + dict_nn['activation_fct'], file=file)
     print(file=file)
-    print("Learning rate is " + str(dictNN['learning_rate']), file=file)
+    print("Learning rate is " + str(dict_nn['learning_rate']), file=file)
     print(file=file)
     print("Momentum not used", file=file)
     print(file=file)
-    print("Number of epochs " + str(dictNN['number_of_epochs']), file=file)
+    print("Number of epochs " + str(dict_nn['number_of_epochs']), file=file)
     print(file=file)
-    print("Number of hidden layers" + str(dictNN['no_layers']), file=file)
+    print("Number of hidden layers" + str(dict_nn['no_layers']), file=file)
     print(file=file)
-    print("Loss function used is " + dictNN['loss_fct'], file=file)
+    print("Loss function used is " + dict_nn['loss_fct'], file=file)
     print(file=file)
-    print("Decay is " + str(dictNN['decay_set']), file=file)
+    print("Decay is " + str(dict_nn['decay_set']), file=file)
 
     print("------------------------------", file=file)
-    print("SVM C is " + str(dictSVM['C']), file=file)
+    print("SVM C is " + str(dict_svm['C']), file=file)
     print(file=file)
-    print("SVM kernel is " + dictSVM['kernel'], file=file)
+    print("SVM kernel is " + dict_svm['kernel'], file=file)
     print(file=file)
-    print("SVM gamma is " + str(dictSVM['gamma']), file=file)
+    print("SVM gamma is " + str(dict_svm['gamma']), file=file)
     print(file=file)
-    print("SVM decision function is " + dictSVM['decision_function'], file=file)
+    print("SVM decision function is " + dict_svm['decision_function'], file=file)
 
-    return dictNN, dictSVM
+    return dict_nn, dict_svm
 
 
-def NLP_labels_analysis(num_clusters,
-                        length,
-                        clusters,
-                        number_of_labels_provided,
-                        test,
+def NLP_labels_analysis(num_clusters: int,
+                        length: int,
+                        clusters: list,
+                        number_of_labels_provided: int,
+                        test: list,
                         ):
     '''
     Function which returns the confusion matrix for the predicted labels using
-    Kmeans
+    Kmeans. This is done by attempting to assing the best cluster number to
+    the "corresponding" label number such that the entries on the main
+    diagonal are maximized.
     Inputs:
         num_clusters - number of classes/clusters expected
         length - number of reports/documents available
@@ -590,7 +592,8 @@ def NLP_labels_analysis(num_clusters,
     print(file=f)
     print("Indices of the files used:", file=f)
     print(test, file=f)
-    return f, newdir
+    cluster_to_labels = {v: k for k, v in labels.items()}
+    return f, newdir, cluster_to_labels
 
 
 def features_list(mycursor, ID):
@@ -655,24 +658,22 @@ def name_to_id(mycursor):
     return name2id
 
 
-def labels_and_features(mycursor, name2id, reportName2cluster, lengt):
+def labels_and_features(mycursor, name2id, reportName2cluster, length, cluster_to_labels):
     Xa = []
-    sqldataID = "select * from an"
-    mycursor.execute(sqldataID)
-    recorddataID = mycursor.fetchall()  # all features from all documents
-    label = None
-    labelNLP = None
-    yNLP = []  # Kmeans labels
+    sqldata_id = "select * from an"
+    mycursor.execute(sqldata_id)
+    recorddata_id = mycursor.fetchall()  # all features from all documents
+    y_nlp = []  # Kmeans labels
     y = []  # manual labels
 
-    for results in recorddataID:
+    for results in recorddata_id:
         ID = results[0]  # get ID of each recorded failure
 
-        labelNLP = reportName2cluster[name2id[ID]]  # get cluster number from K means
-        label = results[3] + results[1] + results[4] + results[
-            2]  # create a string corresponding to the failure by adding the failure type and working words together
+        label_nlp = cluster_to_labels[reportName2cluster[name2id[ID]]]  # get cluster number from K means
+        # create a string corresponding to the failure by adding the failure type and working words together
+        label = results[3] + results[1] + results[4] + results[2]
 
-        yNLP.append(labelNLP)
+        y_nlp.append(label_nlp)
         y.append(label)
 
         features = features_list(mycursor, ID)
@@ -685,11 +686,11 @@ def labels_and_features(mycursor, name2id, reportName2cluster, lengt):
     working_data = mycursor.fetchall()
     for i in range(0, 15):
         Xa.append(list(working_data[0][1:]))
-        yNLP.append(7)
+        y_nlp.append(7)
         y.append('workingworkingworkingworking')
 
-    XSVM = normalise(Xa, lengt + 15)
-    return y, yNLP, XSVM
+    XSVM = normalise(Xa, length + 15)
+    return y, y_nlp, XSVM
 
 
 def train_val_split_stratify(counter, inc, X_traintot, y_traintot,
@@ -771,7 +772,7 @@ def train_val_split_stratify(counter, inc, X_traintot, y_traintot,
 
 def train_nn(no_classes, dict_nn, sgd, dict_xy, accuracy_nn_test_list, callback,
              accuracy_nn_val_list, minmax, conf_matrix, label_type):
-    nn_model = modelf(noclasses=no_classes,
+    nn_model = modelf(number_classes=no_classes,
                       no_hidden=dict_nn['no_hidden'],
                       regularizer=dict_nn['regularizer'],
                       activation_fct=dict_nn['activation_fct'],
@@ -796,90 +797,90 @@ def train_nn(no_classes, dict_nn, sgd, dict_xy, accuracy_nn_test_list, callback,
                                batch_size=1)
     except TypeError:
         return 0, 0, 0
-    [scoreNNtest, predictedNNtest] = scoreCNNs(dict_xy[f"X_test{label}"],
-                                               dict_xy[f"y_test{label}_cat"],
-                                               nn_model, no_classes)
-    accuracy_nn_test_list.append(scoreNNtest)
+    [score_nn_test, predicted_nn_test] = score_nn(dict_xy[f"X_test{label}"],
+                                                  dict_xy[f"y_test{label}_cat"],
+                                                  nn_model, no_classes)
+    accuracy_nn_test_list.append(score_nn_test)
 
-    [scoreNNval, predictedNNval] = scoreCNNs(dict_xy[f"X_val{label}"],
-                                             dict_xy[f"y_val{label}_cat"],
-                                             nn_model, no_classes)
-    accuracy_nn_val_list.append(scoreNNval)
+    [score_nn_val, predicted_nn_val] = score_nn(dict_xy[f"X_val{label}"],
+                                                dict_xy[f"y_val{label}_cat"],
+                                                nn_model, no_classes)
+    accuracy_nn_val_list.append(score_nn_val)
 
-    if scoreNNtest >= minmax['max']:
-        minmax['max'] = scoreNNtest
+    if score_nn_test >= minmax['max']:
+        minmax['max'] = score_nn_test
         conf_matrix['conftestmax'] = \
             confusion_matrix(np.argmax(dict_xy[f"y_test{label}_cat"], axis=-1),
-                             np.argmax(predictedNNtest, axis=-1),
+                             np.argmax(predicted_nn_test, axis=-1),
                              labels=list(range(0, no_classes)))
 
-    if scoreNNtest <= minmax['min']:
-        minmax['min'] = scoreNNtest
+    if score_nn_test <= minmax['min']:
+        minmax['min'] = score_nn_test
         conf_matrix['conftestmin'] = \
             confusion_matrix(np.argmax(dict_xy[f"y_test{label}_cat"], axis=-1),
-                             np.argmax(predictedNNtest, axis=-1),
+                             np.argmax(predicted_nn_test, axis=-1),
                              labels=list(range(0, no_classes)))
 
-    if scoreNNval >= minmax['maxv']:
-        minmax['maxv'] = scoreNNval
+    if score_nn_val >= minmax['maxv']:
+        minmax['maxv'] = score_nn_val
         conf_matrix['confvalmax'] = \
             confusion_matrix(np.argmax(dict_xy[f"y_val{label}_cat"], axis=-1),
-                             np.argmax(predictedNNval, axis=-1),
+                             np.argmax(predicted_nn_val, axis=-1),
                              labels=list(range(0, no_classes)))
 
-    if scoreNNval <= minmax['minv']:
-        minmax['minv'] = scoreNNval
+    if score_nn_val <= minmax['minv']:
+        minmax['minv'] = score_nn_val
         conf_matrix['confvalmin'] = \
             confusion_matrix(np.argmax(dict_xy[f"y_val{label}_cat"], axis=-1),
-                             np.argmax(predictedNNval, axis=-1),
+                             np.argmax(predicted_nn_val, axis=-1),
                              labels=list(range(0, no_classes)))
 
     return minmax, conf_matrix, history
 
 
-def train_SVM(noclasses, dictSVM, dictXy, accuracy_SVM_test_list,
+def train_svm(dict_svm, dictXy, accuracy_SVM_test_list,
               accuracy_SVM_val_list, minmax, conf_matrix, label_type):
     if label_type == 'NLP':
         label = '_NLP'
     else:
         label = ''
 
-    modelSVM = svm.SVC(kernel=dictSVM['kernel'],
-                       C=dictSVM['C'],
-                       gamma=dictSVM['gamma'],
-                       decision_function_shape=dictSVM['decision_function'],
-                       class_weight='balanced')
+    model_svm = svm.SVC(kernel=dict_svm['kernel'],
+                        C=dict_svm['C'],
+                        gamma=dict_svm['gamma'],
+                        decision_function_shape=dict_svm['decision_function'],
+                        class_weight='balanced')
 
-    modelSVM.fit(dictXy[f"X_train{label}"], dictXy[f"y_train{label}"])
+    model_svm.fit(dictXy[f"X_train{label}"], dictXy[f"y_train{label}"])
 
-    validation = modelSVM.predict(dictXy[f"X_val{label}"])
-    scoreSVMval = accuracy_score(dictXy[f"y_val{label}"], validation, normalize=True)
-    accuracy_SVM_val_list.append(scoreSVMval)
+    validation = model_svm.predict(dictXy[f"X_val{label}"])
+    score_svm_val = accuracy_score(dictXy[f"y_val{label}"], validation, normalize=True)
+    accuracy_SVM_val_list.append(score_svm_val)
 
-    predictedSVM = modelSVM.predict(dictXy[f"X_test{label}"])
-    scoreSVM = accuracy_score(dictXy[f"y_test{label}"], predictedSVM, normalize=True)
-    accuracy_SVM_test_list.append(scoreSVM)
+    predicted_svm = model_svm.predict(dictXy[f"X_test{label}"])
+    score_svm = accuracy_score(dictXy[f"y_test{label}"], predicted_svm, normalize=True)
+    accuracy_SVM_test_list.append(score_svm)
 
-    if scoreSVM >= minmax['max']:
-        minmax['max'] = scoreSVM
+    if score_svm >= minmax['max']:
+        minmax['max'] = score_svm
         conf_matrix['conftestmax'] = confusion_matrix(dictXy[f"y_test{label}"],
-                                                      predictedSVM)
-    if scoreSVM <= minmax['min']:
-        minmax['min'] = scoreSVM
+                                                      predicted_svm)
+    if score_svm <= minmax['min']:
+        minmax['min'] = score_svm
         conf_matrix['conftestmin'] = confusion_matrix(dictXy[f"y_test{label}"],
-                                                      predictedSVM)
-    if scoreSVMval >= minmax['maxv']:
-        minmax['maxv'] = scoreSVMval
+                                                      predicted_svm)
+    if score_svm_val >= minmax['maxv']:
+        minmax['maxv'] = score_svm_val
         conf_matrix['confvalmax'] = confusion_matrix(dictXy[f"y_val{label}"],
                                                      validation)
-    if scoreSVMval <= minmax['minv']:
-        minmax['minv'] = scoreSVMval
+    if score_svm_val <= minmax['minv']:
+        minmax['minv'] = score_svm_val
         conf_matrix['confvalmin'] = confusion_matrix(dictXy[f"y_val{label}"],
                                                      validation)
     return minmax, conf_matrix
 
 
-def train_NB(X_traintot, y_traintot, X_traintotNLP, y_traintotNLP,
+def train_NB(X_traintot, y_traintot, X_traintot_nlp, y_traintot_nlp,
              X_test, y_test, X_testNLP, y_testNLP, f):
     modelG = GaussianNB()
     modelG.fit(X_traintot, y_traintot)
@@ -887,7 +888,7 @@ def train_NB(X_traintot, y_traintot, X_traintotNLP, y_traintotNLP,
     scoreG = accuracy_score(y_test, predictedG, normalize=True)
 
     modelGNLP = GaussianNB()
-    modelGNLP.fit(X_traintotNLP, y_traintotNLP)
+    modelGNLP.fit(X_traintot_nlp, y_traintot_nlp)
     predictedGNLP = modelGNLP.predict(X_testNLP)
     scoreGNLP = accuracy_score(y_testNLP, predictedGNLP, normalize=True)
 
