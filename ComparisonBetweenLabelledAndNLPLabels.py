@@ -56,7 +56,7 @@ def main():
     parser.add_argument(
         "--provided_labels",
         type=int,
-        default=2,
+        default=1,
     )
     args = parser.parse_args()
     # connect to database
@@ -87,7 +87,7 @@ def main():
     tf.random.set_seed(0)
     np.random.seed(0)
     random.seed(0)
-    [test, _, arrayn] = \
+    [test, labell, arrayn] = \
         get_data_from_different_labels_for_cluster_initialisation(no_labeled_sets,
                                                                   name2id,
                                                                   final,
@@ -110,7 +110,8 @@ def main():
                                                        length=lengt,
                                                        clusters=clusters,
                                                        number_of_labels_provided=number_labels_provided,
-                                                       test=test)
+                                                       test=test,
+                                                       name2id=name2id)
 
     mycursor = cnx.cursor()
 
@@ -139,6 +140,7 @@ def main():
                                                               test_size=0.2,
                                                               random_state=32)
     print(f'y_test_real is {y_test}', file=f)
+    print(f'y_test_real count is {Counter(y_test)}', file=f)
     accuracy_nn_test_list = []  # list of NN test accuracies
     accuracy_nn_val_list = []  # list of NN validation accuracies
     accuracy_nn_test_list_nlp = []
@@ -187,7 +189,7 @@ def main():
 
     print(number_of_tests)
 
-    while counter < 3:
+    while counter < 10:
         newfile = f"C:/Users/oncescu/coding/4yp/{counter}_{number_of_tests}.txt"
         fi = open(newfile, 'w')
         fi.close()

@@ -21,9 +21,12 @@ from tensorflow.keras.layers import Dense
 from tensorflow.keras import regularizers
 from sklearn import svm
 from sklearn.metrics import confusion_matrix
+from itertools import permutations
+
 
 from datetime import datetime
-from collections import Counter
+from collections import Counter, defaultdict
+from hungarian_algorithm import algorithm
 
 
 def TFIDFretrieval(mycursor):
@@ -117,7 +120,7 @@ def score_nn(X: np.ndarray, y: np.ndarray, model: Sequential, number_classes: in
     Function returning the accuracy score for the artificial neural networks
     Inputs:
         X - features
-        y - numerical labels
+        y - correct numerical labels
         model - NN model
         number_classes - number of classes
     Outputs:
@@ -442,6 +445,7 @@ def NLP_labels_analysis(num_clusters: int,
                         clusters: list,
                         number_of_labels_provided: int,
                         test: list,
+                        name2id:dict,
                         ):
     '''
     Function which returns the confusion matrix for the predicted labels using
@@ -470,112 +474,58 @@ def NLP_labels_analysis(num_clusters: int,
     for i in range(0, num_clusters):
         countvec.append(dict(countl))
 
-    ok = 0
-    label1 = []
-
-    tot1 = 0
-    label2 = []
-
-    tot2 = 0
-    label3 = []
-
-    tot3 = 0
-    label4 = []
-
-    tot4 = 0
-    label5 = []
-
-    tot5 = 0
-    label6 = []
-
-    tot6 = 0
-    label7 = []
-
-    tot7 = 0
     maxim = dict(countl)  # used to detect the main diagonal by finding the maximum entry for each manually set label
 
     labels = {}
     # create confusion matrices by finding corresponding clusters
     # at every run the computer changes the ids of the clusters and we want to find the
     # correlation between our counting system
+    fr_names = list(name2id.values())
     for i in range(0, length):
         if (0 <= i <= 11) or (41 <= i <= 46) or (59 <= i <= 64):  # this is label 1
-            countvec[0][clusters[i]] += 1  # unordered confusion matrix
-            if countvec[0][clusters[i]] > maxim[0]:
-                maxim[0] = countvec[0][clusters[i]]
-                l1 = clusters[i]
-            tot1 += 1
-            label1 = 'gsr ground pin'
+            correctCluster = 1
         else:
             if (12 <= i <= 29) or (53 <= i <= 58):  # this is label 2
-                countvec[1][clusters[i]] += 1
-                if countvec[1][clusters[i]] > maxim[1]:
-                    maxim[1] = countvec[1][clusters[i]]
-                    l2 = clusters[i]
-                tot2 += 1
-                label2 = 'gsr analog pin'
+                correctCluster = 1
             else:
-                if (30 <= i <= 40) or (47 <= i <= 52):  # this is label 3
-                    countvec[2][clusters[i]] += 1
-                    if countvec[2][clusters[i]] > maxim[2]:
-                        maxim[2] = countvec[2][clusters[i]]
-                        l3 = clusters[i]
-                    tot3 += 1
-                    label3 = 'gsr resistor burnt'
+                if (30 <= i <= 40) or (47 <= i <= 52):  # this is label 0
+                    correctCluster = 0
                 else:
-                    if i == 65 or (74 <= i <= 79) or (100 <= i <= 105):  # this is label 4
-                        countvec[3][clusters[i]] += 1
-                        if countvec[3][clusters[i]] > maxim[3]:
-                            maxim[3] = countvec[3][clusters[i]]
-                            l4 = clusters[i]
-                        tot4 += 1
-                        label4 = 'temperature ground pin'
+                    if i == 65 or (74 <= i <= 79) or (100 <= i <= 105):  # this is label 6
+                        correctCluster = 6
                     else:
-                        if (66 <= i <= 70) or (106 <= i <= 111):  # this is label 5
-                            countvec[4][clusters[i]] += 1
-                            if countvec[4][clusters[i]] > maxim[4]:
-                                maxim[4] = countvec[4][clusters[i]]
-                                l5 = clusters[i]
-                            tot5 += 1
-                            label5 = 'acceleration power pin'
+                        if (66 <= i <= 70) or (106 <= i <= 111):  # this is label 4
+                            correctCluster = 4
                         else:
                             if (71 <= i <= 73) or (80 <= i <= 81) or (
-                                    112 <= i <= 117):  # this is label 6
-                                countvec[5][clusters[i]] += 1
-                                if countvec[5][clusters[i]] > maxim[5]:
-                                    maxim[5] = countvec[5][clusters[i]]
-                                    l6 = clusters[i]
-                                tot6 += 1
-                                label6 = 'acceleration ground pin'
+                                    112 <= i <= 117):  # this is label 5
+                                correctCluster = 5
                             else:
-                                countvec[6][clusters[i]] += 1
-                                if countvec[6][clusters[i]] > maxim[6]:
-                                    maxim[6] = countvec[6][clusters[i]]
-                                    l7 = clusters[i]
-                                tot7 += 1
-                                label7 = 'humidity power pin'
-
-    val = 0.75  # accuracy value; used when looping through to find the number of times needed to run the code to get above 75% accuracy
-    if l5 == l6:  # sometimes accelerometer ground/power pin get clustered in the same cluster because of the reports similarity
-        labels[0] = l1
-        labels[1] = l2
-        labels[2] = l3
-        labels[3] = l4
-        labels[4] = l5
-        labels[5] = 21 - l1 - l2 - l3 - l4 - l5 - l7
-        labels[6] = l7
-        ok = 0
-    else:
-        labels[0] = l1
-        labels[1] = l2
-        labels[2] = l3
-        labels[3] = l4
-        labels[4] = l5
-        labels[5] = l6
-        labels[6] = l7
-        if maxim[0] / tot1 > val and maxim[1] / tot2 > val and maxim[2] / tot3 > val and maxim[3] / tot4 > val and \
-                maxim[4] / tot5 > val and maxim[5] / tot6 > val and maxim[6] / tot7 > val:
-            ok = 1  # used to stop the loop when if conditions are met
+                                correctCluster = 6
+        countvec[correctCluster][clusters[i]] += 1
+    bestSoFar = 0
+    for p in permutations(list(range(0,7))):
+        cost = 0
+        for i in range (0, 7):
+            cost += countvec[i][p[i]]
+        if cost > bestSoFar:
+            bestSoFar = cost
+            labels = p
+    labels_to_clusters = defaultdict()
+    counter = 0
+    for label in labels:
+        labels_to_clusters[counter] = label
+        counter += 1
+    # hungarianGraph = defaultdict(dict)
+    # for i in range(0, 7):
+    #     hungarianGraph[i] = defaultdict()
+    #     for j in range(0, 7):
+    #         hungarianGraph[i][j + 8] = countvec[i][j]
+    # wholeMatching = algorithm.find_matching(hungarianGraph, matching_type='max', return_type='list')
+    # assert(len(wholeMatching) == 7)
+    # for i in range(0, 7):
+    #     ((a,b),_) = wholeMatching[i]
+    #     labels[a] = b - 8
 
     now = datetime.now()
     current_time = now.strftime("%H_%M_%S")
@@ -584,15 +534,23 @@ def NLP_labels_analysis(num_clusters: int,
     newdir = "C:/Users/oncescu/data/4yp/Results_" + str(current_date) + "_" + current_time
     os.mkdir(newdir)
     f = open(newdir + "/results.txt", 'w')
+    f1 = open(newdir + "/results2.txt", 'w')
     for i in range(0, 7):
         for j in range(0, 7):
             print(countvec[i][labels[j]], end=" ", file=f)
+            print(countvec[i][labels[j]], end=" ", file=f1)
         print(file=f)
+        print(file=f1)
     print(number_of_labels_provided, file=f)
+    print(number_of_labels_provided, file=f1)
     print(file=f)
+    print(file=f1)
     print("Indices of the files used:", file=f)
+    print("Indices of the files used:", file=f1)
     print(test, file=f)
-    cluster_to_labels = {v: k for k, v in labels.items()}
+    print(test, file=f1)
+    f1.close()
+    cluster_to_labels = {v: k for k, v in labels_to_clusters.items()}
     return f, newdir, cluster_to_labels
 
 
@@ -672,6 +630,8 @@ def labels_and_features(mycursor, name2id, reportName2cluster, length, cluster_t
         label_nlp = cluster_to_labels[reportName2cluster[name2id[ID]]]  # get cluster number from K means
         # create a string corresponding to the failure by adding the failure type and working words together
         label = results[3] + results[1] + results[4] + results[2]
+        if label =='workingworkingworkingnotworking':
+            a = 1
 
         y_nlp.append(label_nlp)
         y.append(label)
@@ -747,9 +707,9 @@ def train_val_split_stratify(counter, inc, X_traintot, y_traintot,
     dictXy['X_val'] = X_val
     dictXy['X_test'] = X_test
 
-    dictXy['X_train_NLP'] = X_trainNLP
-    dictXy['X_val_NLP'] = X_valNLP
-    dictXy['X_test_NLP'] = X_testNLP
+    # dictXy['X_train_NLP'] = X_trainNLP
+    # dictXy['X_val_NLP'] = X_valNLP
+    # dictXy['X_test_NLP'] = X_testNLP
 
     dictXy['y_train'] = y_train
     dictXy['y_val'] = y_val
@@ -788,21 +748,21 @@ def train_nn(no_classes, dict_nn, sgd, dict_xy, accuracy_nn_test_list, callback,
 
     # fit models to training data actual labels
     try:
-        history = nn_model.fit(dict_xy[f"X_train{label}"],
+        history = nn_model.fit(dict_xy["X_train"],
                                dict_xy[f"y_train{label}_cat"],
-                               validation_data=(dict_xy[f"X_val{label}"],
+                               validation_data=(dict_xy["X_val"],
                                                 dict_xy[f"y_val{label}_cat"]),
                                epochs=dict_nn['number_of_epochs'],
                                callbacks=[callback],
                                batch_size=1)
     except TypeError:
         return 0, 0, 0
-    [score_nn_test, predicted_nn_test] = score_nn(dict_xy[f"X_test{label}"],
-                                                  dict_xy[f"y_test{label}_cat"],
+    [score_nn_test, predicted_nn_test] = score_nn(dict_xy["X_test"],
+                                                  dict_xy["y_test_cat"],
                                                   nn_model, no_classes)
     accuracy_nn_test_list.append(score_nn_test)
 
-    [score_nn_val, predicted_nn_val] = score_nn(dict_xy[f"X_val{label}"],
+    [score_nn_val, predicted_nn_val] = score_nn(dict_xy["X_val"],
                                                 dict_xy[f"y_val{label}_cat"],
                                                 nn_model, no_classes)
     accuracy_nn_val_list.append(score_nn_val)
@@ -810,14 +770,14 @@ def train_nn(no_classes, dict_nn, sgd, dict_xy, accuracy_nn_test_list, callback,
     if score_nn_test >= minmax['max']:
         minmax['max'] = score_nn_test
         conf_matrix['conftestmax'] = \
-            confusion_matrix(np.argmax(dict_xy[f"y_test{label}_cat"], axis=-1),
+            confusion_matrix(np.argmax(dict_xy["y_test_cat"], axis=-1),
                              np.argmax(predicted_nn_test, axis=-1),
                              labels=list(range(0, no_classes)))
 
     if score_nn_test <= minmax['min']:
         minmax['min'] = score_nn_test
         conf_matrix['conftestmin'] = \
-            confusion_matrix(np.argmax(dict_xy[f"y_test{label}_cat"], axis=-1),
+            confusion_matrix(np.argmax(dict_xy["y_test_cat"], axis=-1),
                              np.argmax(predicted_nn_test, axis=-1),
                              labels=list(range(0, no_classes)))
 
@@ -851,23 +811,23 @@ def train_svm(dict_svm, dictXy, accuracy_SVM_test_list,
                         decision_function_shape=dict_svm['decision_function'],
                         class_weight='balanced')
 
-    model_svm.fit(dictXy[f"X_train{label}"], dictXy[f"y_train{label}"])
+    model_svm.fit(dictXy["X_train"], dictXy[f"y_train{label}"])
 
-    validation = model_svm.predict(dictXy[f"X_val{label}"])
+    validation = model_svm.predict(dictXy["X_val"])
     score_svm_val = accuracy_score(dictXy[f"y_val{label}"], validation, normalize=True)
     accuracy_SVM_val_list.append(score_svm_val)
 
-    predicted_svm = model_svm.predict(dictXy[f"X_test{label}"])
-    score_svm = accuracy_score(dictXy[f"y_test{label}"], predicted_svm, normalize=True)
+    predicted_svm = model_svm.predict(dictXy["X_test"])
+    score_svm = accuracy_score(dictXy["y_test"], predicted_svm, normalize=True)
     accuracy_SVM_test_list.append(score_svm)
 
     if score_svm >= minmax['max']:
         minmax['max'] = score_svm
-        conf_matrix['conftestmax'] = confusion_matrix(dictXy[f"y_test{label}"],
+        conf_matrix['conftestmax'] = confusion_matrix(dictXy["y_test"],
                                                       predicted_svm)
     if score_svm <= minmax['min']:
         minmax['min'] = score_svm
-        conf_matrix['conftestmin'] = confusion_matrix(dictXy[f"y_test{label}"],
+        conf_matrix['conftestmin'] = confusion_matrix(dictXy["y_test"],
                                                       predicted_svm)
     if score_svm_val >= minmax['maxv']:
         minmax['maxv'] = score_svm_val
@@ -890,7 +850,7 @@ def train_NB(X_traintot, y_traintot, X_traintot_nlp, y_traintot_nlp,
     modelGNLP = GaussianNB()
     modelGNLP.fit(X_traintot_nlp, y_traintot_nlp)
     predictedGNLP = modelGNLP.predict(X_testNLP)
-    scoreGNLP = accuracy_score(y_testNLP, predictedGNLP, normalize=True)
+    scoreGNLP = accuracy_score(y_test, predictedGNLP, normalize=True)
 
     print("Accuracy NB is:", file=f)
     print(scoreG, file=f)
@@ -900,7 +860,7 @@ def train_NB(X_traintot, y_traintot, X_traintot_nlp, y_traintot_nlp,
     print("Accuracy NB is:", file=f)
     print(scoreGNLP, file=f)
     print("Confusion matrix for NLP Naive Bayes:", file=f)
-    print(confusion_matrix(y_testNLP, predictedGNLP), file=f)
+    print(confusion_matrix(y_test, predictedGNLP), file=f)
 
     print(".............................", file=f)
 
@@ -938,7 +898,7 @@ def print_file_val(type_NN_SVM, type_true_NLP, f,
     print(f"Validation accuracy for {type_dict[type_NN_SVM]} with {type_true_NLP} labels is min:",
           file=f)
     print(minmax['minv'], file=f)
-    print(f"Test confusion matrix for {type_dict[type_NN_SVM]} with {type_true_NLP} labels is min:",
+    print(f"Validation confusion matrix for {type_dict[type_NN_SVM]} with {type_true_NLP} labels is min:",
           file=f)
     print(conf_matrix['confvalmin'], file=f)
     print(f"Mean validation accuracy for {type_dict[type_NN_SVM]} with {type_true_NLP} for 100 runs", file=f)
