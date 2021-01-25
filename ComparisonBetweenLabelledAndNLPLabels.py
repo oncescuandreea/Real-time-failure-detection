@@ -47,7 +47,7 @@ from utils import TFIDFretrieval
 from utils import get_data_from_different_labels_for_cluster_initialisation
 from utils import get_parameter_sets, get_parameters, train_nn, train_svm
 from utils import kmeans_clustering, NLP_labels_analysis
-from utils import name_to_id, labels_and_features, train_val_split_stratify
+from utils import id_to_name, labels_and_features, train_val_split_stratify
 from utils import print_file_test, print_file_val, train_NB
 
 
@@ -73,7 +73,7 @@ def main():
     [listTFIDF, indexname, lengt] = TFIDFretrieval(mycursor)
     # final is the dataframe containing the names of the reports and the corresponding tfidf vectors. if add indexname to command below then index is named as the report pd.DataFrame(listTFIDF,indexname)
     final = pd.DataFrame(listTFIDF)
-    name2id = name_to_id(mycursor)
+    id2name = id_to_name(mycursor)
 
     num_clusters = 7
     number_of_tests = args.provided_labels
@@ -87,9 +87,9 @@ def main():
     tf.random.set_seed(0)
     np.random.seed(0)
     random.seed(0)
-    [test, labell, arrayn] = \
+    [test, _, arrayn] = \
         get_data_from_different_labels_for_cluster_initialisation(no_labeled_sets,
-                                                                  name2id,
+                                                                  id2name,
                                                                   final,
                                                                   indexname,
                                                                   cnx)
@@ -106,17 +106,18 @@ def main():
     for count, el in enumerate(indexname):
         report_name_to_cluster.update({el: clusters[count]})
 
-    f, newdir, cluster_to_labels = NLP_labels_analysis(num_clusters=num_clusters,
+    f, newdir, cluster_to_labels = NLP_labels_analysis(mycursor,
+                                                       num_clusters=num_clusters,
                                                        length=lengt,
                                                        clusters=clusters,
                                                        number_of_labels_provided=number_labels_provided,
                                                        test=test,
-                                                       name2id=name2id)
+                                                       id2name=id2name)
 
     mycursor = cnx.cursor()
 
     y, yNLP, X_normalised = labels_and_features(mycursor,
-                                                name2id,
+                                                id2name,
                                                 report_name_to_cluster,
                                                 lengt,
                                                 cluster_to_labels)
@@ -189,7 +190,7 @@ def main():
 
     print(number_of_tests)
 
-    while counter < 10:
+    while counter < 100:
         newfile = f"C:/Users/oncescu/coding/4yp/{counter}_{number_of_tests}.txt"
         fi = open(newfile, 'w')
         fi.close()

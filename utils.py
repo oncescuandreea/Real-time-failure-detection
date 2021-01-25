@@ -168,7 +168,7 @@ def modelf(number_classes, no_hidden, regularizer, activation_fct, no_layers):
 
 
 def get_data_from_different_labels_for_cluster_initialisation(no_labeled_sets,
-                                                              corrdict,
+                                                              id2name,
                                                               final,
                                                               indexname,
                                                               cnx):
@@ -220,7 +220,7 @@ def get_data_from_different_labels_for_cluster_initialisation(no_labeled_sets,
                 recorddataID[random_sample_report][4] + \
                 recorddataID[random_sample_report][2]
 
-        report_name = corrdict[ID]  # get the corresponding report name from ID
+        report_name = id2name[ID]  # get the corresponding report name from ID
 
         # if the numbre of required labeled documents of each type has not been
         # reached, then add label to label_only_once if it has not been met 
@@ -440,16 +440,17 @@ def get_parameters(random, list_of_params, list_of_params_svm, number_of_tests, 
     return dict_nn, dict_svm
 
 
-def NLP_labels_analysis(num_clusters: int,
+def NLP_labels_analysis(mycursor,
+                        num_clusters: int,
                         length: int,
                         clusters: list,
                         number_of_labels_provided: int,
                         test: list,
-                        name2id:dict,
+                        id2name: dict,
                         ):
-    '''
+    """
     Function which returns the confusion matrix for the predicted labels using
-    Kmeans. This is done by attempting to assing the best cluster number to
+    Kmeans. This is done by attempting to assign the best cluster number to
     the "corresponding" label number such that the entries on the main
     diagonal are maximized.
     Inputs:
@@ -461,48 +462,40 @@ def NLP_labels_analysis(num_clusters: int,
             manually labeled sets
         test - index of documents to be used as train labels
     Outputs:
-        file - .txt file containing the indexes of files used as given labels 
+        file - .txt file containing the indexes of files used as given labels
             and accuracy matrix
         newdir - name of directory containing the file
-    '''
+    """
     # create confusion matrix for the labels
 
-    countl = {}
     countvec = []
     for i in range(0, num_clusters):
-        countl[i] = 0
-    for i in range(0, num_clusters):
-        countvec.append(dict(countl))
-
-    maxim = dict(countl)  # used to detect the main diagonal by finding the maximum entry for each manually set label
+        countvec.append(dict.fromkeys(range(0, num_clusters), 0))
 
     labels = {}
     # create confusion matrices by finding corresponding clusters
     # at every run the computer changes the ids of the clusters and we want to find the
     # correlation between our counting system
-    fr_names = list(name2id.values())
+    fr_names = list(id2name.values())
+    name2id = {v: k for k, v in id2name.items()}
+    sqldata_id = "select * from an"
+    mycursor.execute(sqldata_id)
+    recorddata_id = mycursor.fetchall()
+    label_dict = defaultdict()
+    labels_words = []
+    for results in recorddata_id:
+        ID = results[0]  # get ID of each recorded failure
+
+        label = results[3] + results[1] + results[4] + results[2]
+        labels_words.append(label)
+        label_dict[ID] = label
+    classnames, indices = np.unique(labels_words, return_inverse=True)
     for i in range(0, length):
-        if (0 <= i <= 11) or (41 <= i <= 46) or (59 <= i <= 64):  # this is label 1
-            correctCluster = 1
-        else:
-            if (12 <= i <= 29) or (53 <= i <= 58):  # this is label 2
-                correctCluster = 1
-            else:
-                if (30 <= i <= 40) or (47 <= i <= 52):  # this is label 0
-                    correctCluster = 0
-                else:
-                    if i == 65 or (74 <= i <= 79) or (100 <= i <= 105):  # this is label 6
-                        correctCluster = 6
-                    else:
-                        if (66 <= i <= 70) or (106 <= i <= 111):  # this is label 4
-                            correctCluster = 4
-                        else:
-                            if (71 <= i <= 73) or (80 <= i <= 81) or (
-                                    112 <= i <= 117):  # this is label 5
-                                correctCluster = 5
-                            else:
-                                correctCluster = 6
-        countvec[correctCluster][clusters[i]] += 1
+        fr_name = fr_names[i]
+        fr_id = name2id[fr_name]
+        id_to_label = label_dict[fr_id]
+        label_to_class_idx = list(classnames).index(id_to_label)
+        countvec[label_to_class_idx][clusters[i]] += 1
     bestSoFar = 0
     for p in permutations(list(range(0,7))):
         cost = 0
@@ -516,16 +509,6 @@ def NLP_labels_analysis(num_clusters: int,
     for label in labels:
         labels_to_clusters[counter] = label
         counter += 1
-    # hungarianGraph = defaultdict(dict)
-    # for i in range(0, 7):
-    #     hungarianGraph[i] = defaultdict()
-    #     for j in range(0, 7):
-    #         hungarianGraph[i][j + 8] = countvec[i][j]
-    # wholeMatching = algorithm.find_matching(hungarianGraph, matching_type='max', return_type='list')
-    # assert(len(wholeMatching) == 7)
-    # for i in range(0, 7):
-    #     ((a,b),_) = wholeMatching[i]
-    #     labels[a] = b - 8
 
     now = datetime.now()
     current_time = now.strftime("%H_%M_%S")
@@ -534,7 +517,7 @@ def NLP_labels_analysis(num_clusters: int,
     newdir = "C:/Users/oncescu/data/4yp/Results_" + str(current_date) + "_" + current_time
     os.mkdir(newdir)
     f = open(newdir + "/results.txt", 'w')
-    f1 = open(newdir + "/results2.txt", 'w')
+    f1 = open(newdir + "/nlp_cluster_to_label_association.txt", 'w')
     for i in range(0, 7):
         for j in range(0, 7):
             print(countvec[i][labels[j]], end=" ", file=f)
@@ -602,21 +585,21 @@ def normalise(Xa, lengt):
     return XSVM
 
 
-def name_to_id(mycursor):
+def id_to_name(mycursor):
     '''
     Create dictionary relating the name and the id of the reports
     '''
-    name2id = {}
+    id2name = {}
     sql = "select * from corr"
     mycursor.execute(sql)
     correlationdata = mycursor.fetchall()
 
     for row in correlationdata:
-        name2id.update({row[0]: row[1]})
-    return name2id
+        id2name.update({row[0]: row[1]})
+    return id2name
 
 
-def labels_and_features(mycursor, name2id, reportName2cluster, length, cluster_to_labels):
+def labels_and_features(mycursor, id2name, reportName2cluster, length, cluster_to_labels):
     Xa = []
     sqldata_id = "select * from an"
     mycursor.execute(sqldata_id)
@@ -627,7 +610,7 @@ def labels_and_features(mycursor, name2id, reportName2cluster, length, cluster_t
     for results in recorddata_id:
         ID = results[0]  # get ID of each recorded failure
 
-        label_nlp = cluster_to_labels[reportName2cluster[name2id[ID]]]  # get cluster number from K means
+        label_nlp = cluster_to_labels[reportName2cluster[id2name[ID]]]  # get cluster number from K means
         # create a string corresponding to the failure by adding the failure type and working words together
         label = results[3] + results[1] + results[4] + results[2]
         if label =='workingworkingworkingnotworking':
