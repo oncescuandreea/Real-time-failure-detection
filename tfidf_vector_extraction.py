@@ -17,8 +17,6 @@
 # importing useful libraries
 
 import mysql.connector  # connect to database
-import re
-import csv
 
 import nltk  # preprocessing text
 import pandas as pd
@@ -32,7 +30,7 @@ from collections import Counter, defaultdict
 import numpy as np  # maths equations
 import docxpy  # word extraction of text
 import math
-from pathlib import Path
+from utils import id_to_name
 
 
 def compute_tf(wordDict: dict, words_number: int):
@@ -194,16 +192,32 @@ def create_tf_idf_document_vectors(document_word_vectors: list,
     return list_tf_idf
 
 
-def filter_tf_idf_words(report_names, lemmatized_document_words, final):
+def filter_tf_idf_words(report_names, lemmatized_document_words, final, mycursor, cnx):
     """
     Function returns lemmatized representative words for each document before
     and after being filtered by the tfidf score. This is used to print
-    representative words in the NLP section
+    representative words in the NLP section. Tables 3 and 4.
     @param report_names: list of report names
     @param lemmatized_document_words: dictionary of lists of lemmatized words
     @param final: panda dataframe to easier visualise word vectors and their
         corresponding report name
     """
+    create_table_command = "CREATE TABLE wordrep300 (MeasID varchar(255), Word varchar(255), NoApp int, " \
+                           "TFIDF float(8), count int)"
+    try:
+        print("Table wordrep300 is being created")
+        mycursor.execute(create_table_command)
+    except mysql.connector.errors.ProgrammingError:
+        print("Table wordrep300 already created. Data will be replaced")
+    create_table_command = "CREATE TABLE wordrep400 (MeasID varchar(255), Word varchar(255), NoApp int, " \
+                           "TFIDF float(8), count int)"
+    try:
+        print("Table wordrep400 is being created")
+        mycursor.execute(create_table_command)
+    except mysql.connector.errors.ProgrammingError:
+        print("Table wordrep400 already created. Data will be replaced")
+    id2name = id_to_name(mycursor)
+    name2id = {v: k for k, v in id2name.items()}
     for idx, report_name in enumerate(report_names):
         full_word_vector = []  # new list of words with any tfidf
         filtered_word_vector = []  # new list of words where tfidf>0.0019
@@ -215,6 +229,29 @@ def filter_tf_idf_words(report_names, lemmatized_document_words, final):
 
         full_word_vector = np.asarray(full_word_vector)  # transform list to array
         filtered_word_vector = np.asarray(filtered_word_vector)  # transform list to array
+        # keep only most commonly met 15 words with tfidf>0.0019
+        filtered_word_vector_15 = Counter(filtered_word_vector).most_common(15)
+        # keep only most commonly met 15 words with any tfidf
+        full_word_vector_15 = Counter(full_word_vector).most_common(15)
+        report_id = name2id[report_name[0]]
+
+        add_to_sql_command = f"INSERT INTO wordrep300 (MeasID, Word, NoApp, TFIDF, count) VALUES " \
+                             f"(%s, %s, '%s', '%s', '%s')"
+        word_counter = 0
+        for word, count in filtered_word_vector_15:
+            word_vector = [report_id, str(word), count, float(final.loc[report_name][word]), word_counter]
+            mycursor.execute(add_to_sql_command, word_vector)
+            cnx.commit()
+            word_counter += 1
+
+        add_to_sql_command = f"INSERT INTO wordrep400 (MeasID, Word, NoApp, TFIDF, count) VALUES " \
+                             f"(%s, %s, '%s', '%s', '%s')"
+        word_counter = 0
+        for word, count in full_word_vector_15:
+            word_vector = [report_id, str(word), count, float(final.loc[report_name][word]), word_counter]
+            mycursor.execute(add_to_sql_command, word_vector)
+            cnx.commit()
+            word_counter += 1
 
 
 def save_to_sql(final2, mycursor, report_names, cnx):
@@ -248,14 +285,10 @@ def save_to_sql(final2, mycursor, report_names, cnx):
 
 
 def main():
-    # now move data to sql
-    ####################################################################
-    # connect to database
     lemmatizer = WordNetLemmatizer()
     cnx = mysql.connector.connect(user='root', password='sqlAmonouaparola213',
                                   host='127.0.0.1',
                                   database='final')
-    # get data from temperature sensor
     mycursor = cnx.cursor()
 
     # select reports from table which contains number of report, title and name of data file associated
@@ -268,25 +301,13 @@ def main():
     document_word_vectors = create_document_wordsets(report_names, word_set, lemmatized_document_words)
 
     list_tf_idf = create_tf_idf_document_vectors(document_word_vectors, report_names, number_of_words_per_document)
-    final = pd.DataFrame(list_tf_idf)  # create dataframe using pandas for visualisation
     indexname = []
     for report_name in report_names:
         indexname.append(report_name[0])
     # create data frame and set index as indexname
-    final2 = pd.DataFrame(list_tf_idf, index=indexname)
-    a = 1
-    save_to_sql(final2, mycursor, report_names, cnx)
-
-
-# create a list called indexname containing the report titles and use it as index for the dataframes
-# =============================================================================
-# indexname = []
-# for namerep in results:
-#     indexname.append(namerep[0])
-# #create data frame and set index as indexname
-# final2=pd.DataFrame(listTFIDF,index=indexname)
-# 
-# 
+    final = pd.DataFrame(list_tf_idf, index=indexname)
+    # save_to_sql(final, mycursor, report_names, cnx)
+    filter_tf_idf_words(report_names, lemmatized_document_words, final, mycursor, cnx)
 
 
 if __name__ == '__main__':

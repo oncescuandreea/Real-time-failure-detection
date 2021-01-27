@@ -547,11 +547,7 @@ def features_list(mycursor, ID):
     Outputs:
         features - list of combined features from GSR, Acc, Hum, Temp sensors
     '''
-    dict_sensors = {}
-    dict_sensors['GSR'] = 'gsr2'
-    dict_sensors['Acc'] = 'FEAT2'
-    dict_sensors['Hum'] = 'hum3'
-    dict_sensors['Temp'] = 'tempd5'
+    dict_sensors = {'GSR': 'gsr2', 'Acc': 'FEAT2', 'Hum': 'hum3', 'Temp': 'tempd5'}
 
     features = []
     features.append(ID)
