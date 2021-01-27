@@ -10,11 +10,39 @@ sensors and then concatenating them.
 
 import mysql.connector
 import random
-from feature_extraction_utils import create_sql_table, generate_add_sql_command
+import argparse
+from feature_extraction_utils import delete_table
+
+random.seed(0)
+
+
+def create_table_sql(mycursor: mysql.connector.cursor, table_name: str, number_features: int, no_decimals: int):
+    string = f"CREATE TABLE {table_name} (Counter INT"
+    for i in range(0, number_features):
+        string = string + ",Feat" + str(i) + f" Float(15,{no_decimals})"
+    string = string + ")"
+    mycursor.execute(string)
+
+
+def generate_add_sql_command(table_name: str, number_entries: int):
+    add_to_sql_command = f"INSERT INTO {table_name} (Counter"
+    for i in range(0, number_entries):
+        add_to_sql_command = add_to_sql_command + ",Feat" + str(i)
+    add_to_sql_command = add_to_sql_command + ") VALUES (%s"
+    for i in range(0, number_entries):
+        add_to_sql_command = add_to_sql_command + ",'%s'"
+    add_to_sql_command = add_to_sql_command + ")"
+    return add_to_sql_command
 
 
 def main():
-    cnx = mysql.connector.connect(user='root', password='sqlAmonouaparola213',
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--sql_password",
+        type=str,
+    )
+    args = parser.parse_args()
+    cnx = mysql.connector.connect(user='root', password=args.sql_password,
                                   host='127.0.0.1',
                                   database='final')
     mycursor = cnx.cursor()
@@ -22,14 +50,17 @@ def main():
     mycursor.execute(sqldataID)
     list_of_labels = mycursor.fetchall()
 
-    dict_sensors = {'GSR': 'gsr2', 'Acc': 'FEAT2', 'Hum': 'hum3', 'Temp': 'tempd5'}
+    dict_sensors = {'GSR': 'gsr3', 'Acc': 'FEAT3', 'Hum': 'hum4', 'Temp': 'tempd6'}
     no_features = 73
-    no_decimals = 10
+    no_decimals = 4
+    table_name = 'FEAT_working2'
     try:
-        create_sql_table(mycursor, 'FEAT_working', no_features, no_decimals)
+        create_table_sql(mycursor, table_name, no_features, no_decimals)
     except mysql.connector.errors.ProgrammingError:
-        print("Table already created")
-    add_to_sql_command = generate_add_sql_command('FEAT_working', no_features)
+        print("Table already created. Replacing values")
+        delete_table(table_name, cnx)
+        create_table_sql(mycursor, table_name, no_features, no_decimals)
+    add_to_sql_command = generate_add_sql_command(table_name, no_features)
     count = 1
     while count <= 117:
         features = []

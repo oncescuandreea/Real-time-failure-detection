@@ -10,6 +10,7 @@ Created on Wed Sep 25 15:45:13 2019
 import mysql.connector  # connect to database
 import numpy as np
 from collections import defaultdict
+import argparse
 
 
 def get_mean_variance_latex(cnx: mysql.connector, sensor: str):
@@ -72,7 +73,7 @@ def get_mean_variance_latex(cnx: mysql.connector, sensor: str):
         print(var_string)
 
 
-def get_top_14_words(cnx: mysql.connector, ID: str):
+def get_top_14_words(cnx: mysql.connector, ID: str, tf_idf_filter: bool = True):
     """
     Function prints the contents of wordrep100 table for the given ID.
     This table contains top 14 words in descending order given the
@@ -82,9 +83,13 @@ def get_top_14_words(cnx: mysql.connector, ID: str):
     latex format for the report.
     Inputs:
         ID: id of report of interest (eg. 080320191037030137)
+        tf_idf_filter: if true, then print filtered words by tfidf
     """
     mycursor = cnx.cursor()
-    sql = f"select * from wordrep100 where MeasID={ID}"
+    if tf_idf_filter is True:
+        sql = f"select * from wordrep100 where MeasID={ID}"
+    else:
+        sql = f"select * from wordrep200 where MeasID={ID}"
     mycursor.execute(sql)
     results = mycursor.fetchall()
     for result in results:
@@ -278,10 +283,16 @@ def find_missing_id_and_remove(cnx: mysql.connector):
 
 
 def main():
-    cnx = mysql.connector.connect(user='root', password='sqlAmonouaparola213',
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--sql_password",
+        type=str,
+    )
+    args = parser.parse_args()
+    cnx = mysql.connector.connect(user='root', password=args.sql_password,
                                   host='127.0.0.1',
                                   database='final')
-
+    get_top_14_words(cnx, '25012019150803008')
 
 if __name__ == "__main__":
     main()

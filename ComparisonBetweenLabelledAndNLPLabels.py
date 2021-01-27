@@ -42,6 +42,7 @@ import pandas as pd
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
 from tensorflow.keras import optimizers
+from pathlib import Path
 
 from utils import TFIDFretrieval
 from utils import get_data_from_different_labels_for_cluster_initialisation
@@ -58,9 +59,18 @@ def main():
         type=int,
         default=1,
     )
+    parser.add_argument(
+        "--sql_password",
+        type=str,
+    )
+    parser.add_argument(
+        "--results_folder",
+        type=Path,
+        default="C:/Users/oncescu/data/4yp",
+    )
     args = parser.parse_args()
     # connect to database
-    cnx = mysql.connector.connect(user='root', password='sqlAmonouaparola213',
+    cnx = mysql.connector.connect(user='root', password=args.sql_password,
                                   host='127.0.0.1',
                                   database='final')
 
@@ -112,7 +122,8 @@ def main():
                                                        clusters=clusters,
                                                        number_of_labels_provided=number_labels_provided,
                                                        test=test,
-                                                       id2name=id2name)
+                                                       id2name=id2name,
+                                                       results_folder=args.results_folder)
 
     mycursor = cnx.cursor()
 

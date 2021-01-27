@@ -14,7 +14,6 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 from sklearn.cluster import KMeans
-from sklearn import preprocessing
 from tensorflow.python.keras import utils
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense
@@ -26,7 +25,7 @@ from itertools import permutations
 
 from datetime import datetime
 from collections import Counter, defaultdict
-from hungarian_algorithm import algorithm
+from pathlib import Path
 
 
 def TFIDFretrieval(mycursor):
@@ -41,12 +40,12 @@ def TFIDFretrieval(mycursor):
     '''
     # retrieve columns from dataframe, containing the key words corresponding
     # to tfidf scores
-    sql = "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA='final' AND TABLE_NAME='tfidfpd'";
+    sql = "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA='final' AND TABLE_NAME='tfidfpd2'";
     mycursor.execute(sql)
     NameOfColumns = mycursor.fetchall()
 
     # retrieve tfidf table from sql
-    sql = "Select * from tfidfpd"
+    sql = "Select * from tfidfpd2"
     mycursor.execute(sql)
     dictionaries = mycursor.fetchall()
 
@@ -447,6 +446,7 @@ def NLP_labels_analysis(mycursor,
                         number_of_labels_provided: int,
                         test: list,
                         id2name: dict,
+                        results_folder: Path,
                         ):
     """
     Function which returns the confusion matrix for the predicted labels using
@@ -513,8 +513,7 @@ def NLP_labels_analysis(mycursor,
     now = datetime.now()
     current_time = now.strftime("%H_%M_%S")
     current_date = now.date()
-    # newdir = "C:/Users/Andreea/Results/Results_"+str(current_date) + "_"+current_time
-    newdir = "C:/Users/oncescu/data/4yp/Results_" + str(current_date) + "_" + current_time
+    newdir = str(results_folder) + "/Results_" + str(current_date) + "_" + current_time
     os.mkdir(newdir)
     f = open(newdir + "/results.txt", 'w')
     f1 = open(newdir + "/nlp_cluster_to_label_association.txt", 'w')
@@ -547,7 +546,7 @@ def features_list(mycursor, ID):
     Outputs:
         features - list of combined features from GSR, Acc, Hum, Temp sensors
     '''
-    dict_sensors = {'GSR': 'gsr2', 'Acc': 'FEAT2', 'Hum': 'hum3', 'Temp': 'tempd5'}
+    dict_sensors = {'GSR': 'gsr3', 'Acc': 'FEAT3', 'Hum': 'hum4', 'Temp': 'tempd6'}
 
     features = []
     features.append(ID)
@@ -620,7 +619,7 @@ def labels_and_features(mycursor, id2name, reportName2cluster, length, cluster_t
 
     # add to features and labels the ones for the case when everything works
     # choose only 15 from the table
-    sql_data_working = "select * from feat_working"
+    sql_data_working = "select * from feat_working2"
     mycursor.execute(sql_data_working)
     working_data = mycursor.fetchall()
     for i in range(0, 15):

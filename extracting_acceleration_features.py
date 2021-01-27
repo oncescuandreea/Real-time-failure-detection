@@ -8,26 +8,30 @@
 import numpy as np
 import mysql.connector
 from scipy import signal
-import csv
+import argparse
 from scipy import fftpack
 from scipy.stats import kurtosis
 from scipy.stats import skew
 from operator import add
-from feature_extraction_utils import generate_add_sql_command, get_id_data, create_sql_table
+from pathlib import Path
+from feature_extraction_utils import generate_add_sql_command, get_id_data, create_sql_table, delete_table
 
 
-def takeFirst(elem):
+def takeFirst(elem: list):
     return elem[0]
 
 
-def extract_accelerometer_features(list_of_ids, mycursor,
-                                   add_to_sql_command, cnx):
+def extract_accelerometer_features(list_of_ids: list,
+                                   mycursor: mysql.connector.cursor,
+                                   add_to_sql_command: str,
+                                   cnx: mysql.connector,
+                                   data_folder_location: Path):
     window = signal.hamming(1000, sym=False)  # a 1000 points window
     listTotal = []  # keep top 5 frequencies for x,y,z
 
     for one_id in list_of_ids:
         measurement_id = one_id[0]
-        data = get_id_data(mycursor, measurement_id)
+        data = get_id_data(mycursor, measurement_id, data_folder_location)
 
         ##################################acc bits
         columnx = []  # containing windowed signal
@@ -230,7 +234,8 @@ def extract_accelerometer_features(list_of_ids, mycursor,
             if i == 1:
                 listmean = feature_list  # initialise the mean value with the initial value of the list of fft features
             else:
-                listmean = list(map(add, listmean, feature_list))  # add new fft values for next signal to the previous ones
+                listmean = list(
+                    map(add, listmean, feature_list))  # add new fft values for next signal to the previous ones
                 # element by element
             a = a + 2999
         no_features = len(feature_list)  # find dimensions of number of features
@@ -244,7 +249,18 @@ def extract_accelerometer_features(list_of_ids, mycursor,
 
 
 def main():
-    cnx = mysql.connector.connect(user='root', password='sqlAmonouaparola213',  # change back for the other computer
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--sql_password",
+        type=str,
+    )
+    parser.add_argument(
+        "--data_folder_location",
+        type=Path,
+        default='C:/Users/oncescu/OneDrive - Nexus365/Data',
+    )
+    args = parser.parse_args()
+    cnx = mysql.connector.connect(user='root', password=args.sql_password,
                                   host='127.0.0.1',
                                   database='final')
     mycursor = cnx.cursor()
@@ -254,15 +270,20 @@ def main():
     list_of_ids = list(mycursor.fetchall())
     no_features = 48
     no_decimals = 10
+    table_name = 'FEAT3'
     try:
-        create_sql_table(mycursor, 'FEAT3', no_features, no_decimals)
+        create_sql_table(mycursor, table_name, no_features, no_decimals)
     except mysql.connector.errors.ProgrammingError:
-        print("Table already created")
-    add_to_sql_command = generate_add_sql_command('FEAT3', no_features)
+        print("Table already created. Replacing values")
+        delete_table(table_name, cnx)
+        create_sql_table(mycursor, table_name, no_features, no_decimals)
+    add_to_sql_command = generate_add_sql_command(table_name, no_features)
     print("Extracting accelerometer features")
     extract_accelerometer_features(list_of_ids, mycursor,
-                                   add_to_sql_command, cnx)
+                                   add_to_sql_command, cnx,
+                                   args.data_folder_location)
     print("Finished extracting and adding features to sql")
+
 
 if __name__ == "__main__":
     main()

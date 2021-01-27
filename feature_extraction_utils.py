@@ -1,5 +1,6 @@
 import csv
 import mysql.connector
+from pathlib import Path
 
 
 def generate_add_sql_command(table_name: str, number_entries: int):
@@ -13,11 +14,12 @@ def generate_add_sql_command(table_name: str, number_entries: int):
     return add_to_sql_command
 
 
-def get_id_data(mycursor: mysql.connector.cursor, measurement_id: str):
+def get_id_data(mycursor: mysql.connector.cursor, measurement_id: str,
+                data_folder_location: Path):
     sql_get_data_name = "Select nameData from corr where ID='" + measurement_id + "'"
     mycursor.execute(sql_get_data_name)
     data_file_name = mycursor.fetchall()
-    data = csv.reader(open('C:/Users/oncescu/OneDrive - Nexus365/Data/' + data_file_name[0][0], 'rt'),
+    data = csv.reader(open(data_folder_location / data_file_name[0][0], 'rt'),
                       delimiter=",", quotechar='|')
     return data
 

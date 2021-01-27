@@ -31,6 +31,9 @@ import numpy as np  # maths equations
 import docxpy  # word extraction of text
 import math
 from utils import id_to_name
+from pathlib import Path
+import argparse
+from feature_extraction_utils import delete_table
 
 
 def compute_tf(wordDict: dict, words_number: int):
@@ -104,20 +107,20 @@ def word_lemmatization(word: str, word_pos, lemmatizer):
     return lemmatizer.lemmatize(word, x)
 
 
-def text_preprocessing(file_path: str):
+def text_preprocessing(file_path: Path):
     """
     Extract text, pre-process text and add part of speech to no_stop words.
     @param file_path: file location
     @return: vector of tuples of words and the corresponding POS
     """
-    text = docxpy.process(file_path)
+    text = docxpy.process(str(file_path))
     file_words = [w for w in word_tokenize(text.lower()) if w.isalpha()]  # tokenize and discard non words
     no_stops = [w for w in file_words if w not in stopwords.words('english')]  # discard stopwords
     vec = nltk.pos_tag(no_stops)  # add part of speech tagging
     return vec
 
 
-def create_corpus(report_names: list, lemmatizer):
+def create_corpus(report_names: list, lemmatizer, report_folder_location: Path):
     """
     Function generated the most relevant words for all documents in corpus
     @param report_names: list or report names
@@ -135,7 +138,7 @@ def create_corpus(report_names: list, lemmatizer):
     lemmatized_document_words = defaultdict(list)
 
     for report_name in report_names:
-        report_path = 'C:/Users/oncescu/OneDrive - Nexus365/Reports/' + report_name[0]
+        report_path = report_folder_location / report_name[0]
         word_and_pos[report_name] = text_preprocessing(report_path)
 
         for word, pos in word_and_pos[report_name]:
@@ -209,6 +212,8 @@ def filter_tf_idf_words(report_names, lemmatized_document_words, final, mycursor
         mycursor.execute(create_table_command)
     except mysql.connector.errors.ProgrammingError:
         print("Table wordrep300 already created. Data will be replaced")
+        delete_table('wordrep300', cnx)
+        mycursor.execute(create_table_command)
     create_table_command = "CREATE TABLE wordrep400 (MeasID varchar(255), Word varchar(255), NoApp int, " \
                            "TFIDF float(8), count int)"
     try:
@@ -216,6 +221,8 @@ def filter_tf_idf_words(report_names, lemmatized_document_words, final, mycursor
         mycursor.execute(create_table_command)
     except mysql.connector.errors.ProgrammingError:
         print("Table wordrep400 already created. Data will be replaced")
+        delete_table('wordrep400', cnx)
+        mycursor.execute(create_table_command)
     id2name = id_to_name(mycursor)
     name2id = {v: k for k, v in id2name.items()}
     for idx, report_name in enumerate(report_names):
@@ -260,7 +267,14 @@ def save_to_sql(final2, mycursor, report_names, cnx):
     for ii in range(0, 258):
         addf = addf + ",_" + final2.columns[ii] + " Float(15,14)"
     addf = addf + ")"
-    mycursor.execute(addf)
+
+    try:
+        print("Table tfidfpd2 is being created")
+        mycursor.execute(addf)
+    except mysql.connector.errors.ProgrammingError:
+        print("Table tfidfpd2 already created. Data will be replaced")
+        delete_table('tfidfpd2', cnx)
+        mycursor.execute(addf)
 
     # create the string representing the command for sql for adding values
     addf2 = "INSERT INTO tfidfpd2 (measID"
@@ -286,7 +300,18 @@ def save_to_sql(final2, mycursor, report_names, cnx):
 
 def main():
     lemmatizer = WordNetLemmatizer()
-    cnx = mysql.connector.connect(user='root', password='sqlAmonouaparola213',
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--sql_password",
+        type=str,
+    )
+    parser.add_argument(
+        "--report_folder_location",
+        type=Path,
+        default='C:/Users/oncescu/OneDrive - Nexus365/Reports',
+    )
+    args = parser.parse_args()
+    cnx = mysql.connector.connect(user='root', password=args.sql_password,
                                   host='127.0.0.1',
                                   database='final')
     mycursor = cnx.cursor()
@@ -296,7 +321,7 @@ def main():
     mycursor.execute(sql)
     report_names = list(mycursor.fetchall())
     number_of_words_per_document, _, word_set, lemmatized_document_words = \
-        create_corpus(report_names, lemmatizer)
+        create_corpus(report_names, lemmatizer, args.report_folder_location)
 
     document_word_vectors = create_document_wordsets(report_names, word_set, lemmatized_document_words)
 
@@ -306,7 +331,7 @@ def main():
         indexname.append(report_name[0])
     # create data frame and set index as indexname
     final = pd.DataFrame(list_tf_idf, index=indexname)
-    # save_to_sql(final, mycursor, report_names, cnx)
+    save_to_sql(final, mycursor, report_names, cnx)
     filter_tf_idf_words(report_names, lemmatized_document_words, final, mycursor, cnx)
 
 
