@@ -1,8 +1,11 @@
 # Real-time-failure-detection
 
 To re-run experiments presented in paper "Sensor fault detection and isolation for health monitoring
-devices by learning from failures", clone this repository. Then, change the location where data files and reports are stored
-and change the sql password to your own sql password.
+devices by learning from failures", clone this repository and install the following:
+* Python 3.7.1
+* Tensorflow 2.0.0 (pip install --upgrade tensorflow==2.0.0-rc0)
+* Pandas 0.23.4
+* Matplotlib 3.3.3
 
 **The following steps are necessary to run the experiments:**\
 Create a database called *final* in mysql command line:
