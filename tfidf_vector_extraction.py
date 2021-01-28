@@ -30,10 +30,10 @@ from collections import Counter, defaultdict
 import numpy as np  # maths equations
 import docxpy  # word extraction of text
 import math
-from utils import id_to_name
+from utils.utils_ml import id_to_name
 from pathlib import Path
 import argparse
-from feature_extraction_utils import delete_table
+from utils.feature_extraction_utils import delete_table
 
 
 def compute_tf(wordDict: dict, words_number: int):
@@ -313,7 +313,7 @@ def main():
     args = parser.parse_args()
     cnx = mysql.connector.connect(user='root', password=args.sql_password,
                                   host='127.0.0.1',
-                                  database='final')
+                                  database='final_bare')
     mycursor = cnx.cursor()
 
     # select reports from table which contains number of report, title and name of data file associated

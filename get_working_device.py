@@ -11,7 +11,7 @@ sensors and then concatenating them.
 import mysql.connector
 import random
 import argparse
-from feature_extraction_utils import delete_table
+from utils.feature_extraction_utils import delete_table
 
 random.seed(0)
 
@@ -44,7 +44,7 @@ def main():
     args = parser.parse_args()
     cnx = mysql.connector.connect(user='root', password=args.sql_password,
                                   host='127.0.0.1',
-                                  database='final')
+                                  database='final_bare')
     mycursor = cnx.cursor()
     sqldataID = "select * from an"
     mycursor.execute(sqldataID)

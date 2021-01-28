@@ -7,7 +7,7 @@ import numpy as np
 from scipy.stats import kurtosis
 from scipy.stats import skew
 from pathlib import Path
-from feature_extraction_utils import generate_add_sql_command, get_id_data, create_sql_table, delete_table
+from utils.feature_extraction_utils import generate_add_sql_command, get_id_data, create_sql_table, delete_table
 
 
 def extract_temperature_features(list_of_ids: list,
@@ -80,7 +80,7 @@ def main():
     args = parser.parse_args()
     cnx = mysql.connector.connect(user='root', password=args.sql_password,
                                   host='127.0.0.1',
-                                  database='final')
+                                  database='final_bare')
     mycursor = cnx.cursor()
 
     sql = "Select ID from an"
