@@ -148,27 +148,14 @@ def train_svm(dict_svm: dict, dictXy: dict, accuracy_SVM_test_list: list,
     return minmax, conf_matrix
 
 
-def train_nb(X_traintot: np.ndarray, y_traintot: np.ndarray, X_traintot_nlp: np.ndarray,
-             y_traintot_nlp: np.ndarray, X_test: np.ndarray, y_test: np.ndarray, X_testNLP: np.ndarray,
-             f: _io.TextIOWrapper):
+def train_nb(X_traintot: np.ndarray, y_traintot: np.ndarray, X_test: np.ndarray, y_test: np.ndarray,
+             f: _io.TextIOWrapper, label: str = ''):
     modelG = GaussianNB()
     modelG.fit(X_traintot, y_traintot)
     predictedG = modelG.predict(X_test)
     scoreG = accuracy_score(y_test, predictedG, normalize=True)
 
-    modelGNLP = GaussianNB()
-    modelGNLP.fit(X_traintot_nlp, y_traintot_nlp)
-    predictedGNLP = modelGNLP.predict(X_testNLP)
-    scoreGNLP = accuracy_score(y_test, predictedGNLP, normalize=True)
-
-    print("Accuracy NB is:", file=f)
+    print(f"Accuracy NB {label} is:", file=f)
     print(scoreG, file=f)
-    print("Confusion matrix for Naive Bayes:", file=f)
+    print(f"Confusion matrix for {label} Naive Bayes:", file=f)
     print(confusion_matrix(y_test, predictedG), file=f)
-
-    print("Accuracy NB is:", file=f)
-    print(scoreGNLP, file=f)
-    print("Confusion matrix for NLP Naive Bayes:", file=f)
-    print(confusion_matrix(y_test, predictedGNLP), file=f)
-
-    print(".............................", file=f)
