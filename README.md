@@ -12,7 +12,7 @@ Then, save the *sql_databases/dump-final-tables-start-2021.sql* file in MySQL\My
 ```
 mysql -u root -p final < dump-final-tables-start-2021.sql
 ```
-Download the folders with [recorded data](https://drive.google.com/file/d/1FaJK0pMIHg-x5dnGmrmts8z9h3-vbLpa/view?usp=sharing) and [written failure reports](https://drive.google.com/file/d/1C0N-4VKglsygwjRTrHl6JgkG9BBimmuE/view?usp=sharing).
+Download the folders with [recorded data](https://drive.google.com/file/d/1FaJK0pMIHg-x5dnGmrmts8z9h3-vbLpa/view?usp=sharing) and [written failure reports](https://drive.google.com/file/d/1gmovGbZ0iGfg5QCHeaK6wkSqllJ2qdbE/view?usp=sharing).
 Now, run the python scripts to generate tables with features for sensor data and for word documents.\
 To generate the sensor features run the *extracting_{sensor}_features.py* files. As an example:
 ```
