@@ -7,7 +7,9 @@ import pandas as pd
 import os
 import time
 import random
+
 random.seed(0)
+
 
 def run_random_seed_exp(no_labeled_sets: int, id2name: dict, final: pd.DataFrame, indexname: list,
                         cnx: mysql.connector, num_clusters: int, mycursor: mysql.connector.cursor,
@@ -52,7 +54,9 @@ def summarise_results(results_folder, length, no_labeled_sets):
     max_accuracy = 0
     min_accuracy = 1
     for folder in generated_folders:
-        with open(results_folder / f"nlp_clustering_{no_labeled_sets}" / folder / "nlp_cluster_to_label_association.txt", 'r') as f:
+        with open(
+                results_folder / f"nlp_clustering_{no_labeled_sets}" / folder / "nlp_cluster_to_label_association.txt",
+                'r') as f:
             matrix = f.read().splitlines()
         sum_main_diagonal = 0
         for idx, row in enumerate(matrix[0:7]):
@@ -65,6 +69,7 @@ def summarise_results(results_folder, length, no_labeled_sets):
             min_accuracy = accuracy
             min_folder = folder
     return max_accuracy, max_folder, min_accuracy, min_folder
+
 
 def main():
     parser = argparse.ArgumentParser()

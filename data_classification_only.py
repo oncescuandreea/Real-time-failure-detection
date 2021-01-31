@@ -203,7 +203,7 @@ def main():
     parser.add_argument(
         "--database_name",
         type=str,
-        default='final_bare',
+        default='final',
     )
     args = parser.parse_args()
     # connect to database
