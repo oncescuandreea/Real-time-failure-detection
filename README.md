@@ -8,7 +8,7 @@ Create a database called *final* in mysql command line:
 ```
 create database final;
 ```
-Then, save the *dump-final-tables-start-2021.sql* file in MySQL\MySQL Server {*version*}\bin folder. Open a command prompt with admin rights in the same folder and run:
+Then, save the *sql_databases/dump-final-tables-start-2021.sql* file in MySQL\MySQL Server {*version*}\bin folder. Open a command prompt with admin rights in the same folder and run:
 ```
 mysql -u root -p final < dump-final-tables-start-2021.sql
 ```
@@ -36,6 +36,6 @@ python data_classification_only.py --sql_password {insert here your sql password
 ```
 To generate only NLP clustering results from section 5 run the following code with the number of required labeled examples of each failure type:
 ```
-python nlp_clustering_accuracy.py --sql_password sqlAmonouaparola213 --database_name final_bare --provided_labels 1
+python nlp_clustering_accuracy.py --sql_password sqlAmonouaparola213 --database_name final_bare --provided_labels 1 --results_folder {folder where plots and summary .txt files are generated}
 ```
 To print information about features in tables found in the paper, various useful functions can be found in *misc/getresultsforNLPjournal.py* file.
