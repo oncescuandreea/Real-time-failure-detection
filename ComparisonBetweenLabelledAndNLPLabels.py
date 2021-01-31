@@ -33,7 +33,7 @@ from utils.utils_ml import id_to_name, labels_and_features, train_val_split_stra
 from utils.utils_hyperparameters import get_parameter_sets, get_parameters
 from utils.utils_nlp import kmeans_clustering, nlp_labels_analysis
 from utils.utils_train import train_nn, train_svm, train_nb
-from utils.utils_print import plot_ml_results, print_summary_of_results
+from utils.utils_print import plot_ml_results, print_summary_of_results, print_summary_nb_nlp
 
 
 def main():
@@ -41,7 +41,7 @@ def main():
     parser.add_argument(
         "--provided_labels",
         type=int,
-        default=1,
+        default=0,
     )
     parser.add_argument(
         "--sql_password",
@@ -52,11 +52,16 @@ def main():
         type=Path,
         default="C:/Users/oncescu/data/4yp",
     )
+    parser.add_argument(
+        "--database_name",
+        type=str,
+        default='final',
+    )
     args = parser.parse_args()
     # connect to database
     cnx = mysql.connector.connect(user='root', password=args.sql_password,
                                   host='127.0.0.1',
-                                  database='final_bare')
+                                  database=args.database_name)
 
     # retrieve from the tfidf table the name of the words for which the scores were calculated
     # the names are stored in NameOfColumns
@@ -64,7 +69,7 @@ def main():
 
     # retreive from the satme table the actual values corresponding to the words and for each document create a
     # dictionary with the word and the values. then create a dataframe to allow for visualisation of the tfidf vectors
-    [listTFIDF, indexname, lengt] = tf_idf_retrieval(mycursor)
+    [listTFIDF, indexname, lengt] = tf_idf_retrieval(mycursor, args.database_name)
     # final is the dataframe containing the names of the reports and the corresponding tfidf vectors. if add
     # indexname to command below then index is named as the report pd.DataFrame(listTFIDF, indexname)
     final = pd.DataFrame(listTFIDF)
@@ -74,7 +79,6 @@ def main():
     number_of_tests = args.provided_labels
 
     list_of_params, list_of_params_svm = get_parameter_sets(number_of_tests)
-
     no_labeled_sets = number_of_tests
     tf.compat.v1.reset_default_graph()
     tf.random.set_seed(0)
@@ -141,18 +145,22 @@ def main():
     accuracy_svm_val_list = []  # list of SVM accuracy values on validation data
     accuracy_svm_test_list_nlp = []
     accuracy_svm_val_list_nlp = []
+    accuracy_nb_test_list_nlp = []
 
-    minmax_nn = {'max': 0, 'min': 1, 'maxv': 0, 'minv': 0}
+    minmax_nn = {'max': 0, 'min': 1, 'maxv': 0, 'minv': 1}
     conf_matrix_nn = {}
 
-    minmax_nn_nlp = {'max': 0, 'min': 1, 'maxv': 0, 'minv': 0}
+    minmax_nn_nlp = {'max': 0, 'min': 1, 'maxv': 0, 'minv': 1}
     conf_matrix_nn_nlp = {}
 
-    minmax_svm = {'max': 0, 'min': 1, 'maxv': 0, 'minv': 0}
+    minmax_svm = {'max': 0, 'min': 1, 'maxv': 0, 'minv': 1}
     conf_matrix_svm = {}
 
-    minmax_svm_nlp = {'max': 0, 'min': 1, 'maxv': 0, 'minv': 0}
+    minmax_svm_nlp = {'max': 0, 'min': 1, 'maxv': 0, 'minv': 1}
     conf_matrix_svm_nlp = {}
+
+    minmax_nb_nlp = {'max': 0, 'min': 1}
+    conf_matrix_nb_nlp = {}
 
     dict_nn, dict_svm = get_parameters(random_bool=False,
                                        list_of_params=list_of_params,
@@ -163,12 +171,7 @@ def main():
     inc = 1  # increment for setting random seed value and for making sure the split is correct
     noclasses = len(classnames)
 
-    print(number_of_tests)
-
     while counter < 100:
-        newfile = str(args.results_folder / f"{counter}_{number_of_tests}.txt")
-        fi = open(newfile, 'w')
-        fi.close()
         callback = tf.keras.callbacks.EarlyStopping(monitor='val_loss',
                                                     patience=8,
                                                     restore_best_weights=True)
@@ -222,12 +225,14 @@ def main():
                                                         label_type='NLP')
 
         # =============================================================================
-
+        minmax_nb_nlp, conf_matrix_nb_nlp = train_nb(X_train_tot_nlp, y_train_tot_nlp, X_test_nlp, y_test,
+                                                     f, 'NLP', minmax_nb_nlp, conf_matrix_nb_nlp,
+                                                     accuracy_nb_test_list_nlp)
         counter += 1
 
     # =============================================================================
-    train_nb(X_train_tot, y_train_tot, X_train_tot_nlp, y_train_tot_nlp,
-             X_test, y_test, X_test_nlp, f)
+    train_nb(X_train_tot, y_train_tot, X_test, y_test, f)
+    print_summary_nb_nlp(minmax_nb_nlp, conf_matrix_nb_nlp, accuracy_nb_test_list_nlp, f)
     # =============================================================================
 
     print_summary_of_results(f, minmax_nn, conf_matrix_nn, accuracy_nn_test_list,

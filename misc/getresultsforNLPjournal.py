@@ -21,7 +21,7 @@ def get_mean_variance_latex(cnx: mysql.connector, sensor: str):
     Inputs:
         cnx: connector to sql database "final"
         sensor: name of the sensor for which the table is wanted
-            can be tempd3, hum3, gsr2 or feat2
+            can be tempd6, hum4, gsr3 or feat3
     Outputs:
         Prints the latex code in the order first the lines corresponding
         to the means and then the ones corresponding to the variance
@@ -101,7 +101,7 @@ def get_features_example_tables_temp(cnx: mysql.connector):
     """
     Function prints 6 examples for the features of the
     temperature sensor. This is done by accessing the
-    tempd3 table which has the form ID, Feat0-6
+    tempd6 table which has the form ID, Feat0-6
     Inputs:
         cnx: sql connector
     """
@@ -109,7 +109,7 @@ def get_features_example_tables_temp(cnx: mysql.connector):
     list_of_id_reports = ['23022019201803027', '20022019171303018', '25012019144103005', '03022019214503011',
                           '29102018104303002', '080320191024030127']
     for id_report in list_of_id_reports:
-        sql = "select * from tempd3 where ID='" + id_report + "'"
+        sql = "select * from tempd6 where ID='" + id_report + "'"
         mycursor.execute(sql)
         id_feature_list = mycursor.fetchall()
         for feature_list in id_feature_list:
@@ -136,7 +136,7 @@ def get_features_example_tables_hum(cnx: mysql.connector):
     """
     Function prints 6 examples for the features of the
     temperature sensor. This is done by accessing the
-    hum3 table which has the form ID, Feat0-6
+    hum4 table which has the form ID, Feat0-6
     Inputs:
         cnx: sql connector
     """
@@ -144,7 +144,7 @@ def get_features_example_tables_hum(cnx: mysql.connector):
     list_of_id_reports = ['060320191159030106', '04032019165503090', '060320191207030114', '060320191216030120',
                           '070320191827030126', '080320191036030136']
     for id_report in list_of_id_reports:
-        sql = "select * from hum3 where ID='" + id_report + "'"
+        sql = "select * from hum4 where ID='" + id_report + "'"
         mycursor.execute(sql)
         id_feature_list = mycursor.fetchall()
         for feature_list in id_feature_list:
@@ -171,7 +171,7 @@ def get_features_example_tables_gsr(cnx: mysql.connector):
     """
     Function prints 6 examples for the features of the
     temperature sensor. This is done by accessing the
-    gsr2 table which has the form ID, Feat0-10
+    gsr3 table which has the form ID, Feat0-10
     Inputs:
         cnx: sql connector
     """
@@ -180,7 +180,7 @@ def get_features_example_tables_gsr(cnx: mysql.connector):
                           '19022019174503015', '080320191024030127', '23022019202403028', '04032019165803093']
 
     for id_report in list_of_id_reports:
-        sql = "select * from gsr2 where ID='" + id_report + "'"
+        sql = "select * from gsr3 where ID='" + id_report + "'"
         mycursor.execute(sql)
         id_feature_list = mycursor.fetchall()
         for feature_list in id_feature_list:
@@ -210,7 +210,7 @@ def get_features_example_tables_acc(cnx: mysql.connector):
     """
         Function prints 12 examples for the features of the
         accelerometer. This is done by accessing the
-        feat2 table which has the form ID, Feat0-47
+        feat3 table which has the form ID, Feat0-47
         Inputs:
             cnx: sql connector
         """
@@ -220,7 +220,7 @@ def get_features_example_tables_acc(cnx: mysql.connector):
                           '19022019174503015', '19022019175103017', '080320191026030130', '080320191027030132']
     labels = ['ground'] * 4 + ['working'] * 4 + ['power'] * 4
     for id_report in list_of_id_reports:
-        sql = "select * from FEAT2 where ID='" + id_report + "'"
+        sql = "select * from feat3 where ID='" + id_report + "'"
         mycursor.execute(sql)
         id_feature_list = mycursor.fetchall()
         for feature_list in id_feature_list:
@@ -229,7 +229,8 @@ def get_features_example_tables_acc(cnx: mysql.connector):
             id_label = mycursor.fetchall()
             result = np.array(feature_list[1:])
             result = np.around(result, decimals=2)
-            i = 2
+            result = np.around(result, decimals=2)
+            i = 2  # 0 for x axis, 1 for y axis and 2 for z axis
             print('\hline')
             if id_label[0][0] == 'power' or id_label[0][0] == 'ground':
                 print('\\textbf{' + feature_list[0] + '} & ' + '\\textbf{' + str(
@@ -249,16 +250,16 @@ def get_features_example_tables_acc(cnx: mysql.connector):
 def find_missing_id_and_remove(cnx: mysql.connector):
     """
     Function searches to see if there is any mismatch in the number
-    and contents of table gsr2 and the table containing all labels
+    and contents of table gsr3 and the table containing all labels
     for all report IDs. If such documents are found then they are
     deleted from all tables in the database
     """
     mycursor = cnx.cursor()
-    sql = "select * from gsr2"
+    sql = "select * from gsr3"
     mycursor.execute(sql)
-    gsr2_contents = mycursor.fetchall()
+    gsr_contents = mycursor.fetchall()
     extra_ids = []
-    for result in gsr2_contents:
+    for result in gsr_contents:
         id: str = result[0]
         # search for that id in the big table with all labels
         sql = "select * from an where ID='" + id + "'"
@@ -291,8 +292,9 @@ def main():
     args = parser.parse_args()
     cnx = mysql.connector.connect(user='root', password=args.sql_password,
                                   host='127.0.0.1',
-                                  database='final')
-    get_top_14_words(cnx, '25012019150803008')
+                                  database='final_bare')
+    # get_top_14_words(cnx, '25012019150803008')
+    get_features_example_tables_gsr(cnx)
 
 if __name__ == "__main__":
     main()

@@ -39,6 +39,20 @@ def print_file_val(type_NN_SVM: str, type_true_NLP: str, f: _io.TextIOWrapper,
     print(mean(accuracy_list), file=f)
 
 
+def print_summary_nb_nlp(minmax_nb: dict, conf_matrix_nb: dict, accuracy_nb_test_list_nlp: list,
+                         f: _io.TextIOWrapper):
+    print(f"Max accuracy NB NLP is:", file=f)
+    print(minmax_nb['max'], file=f)
+    print(f"Confusion matrix for Naive Bayes for max accuracy:", file=f)
+    print(conf_matrix_nb['conftestmax'], file=f)
+    print(f"Min accuracy NB NLP is:", file=f)
+    print(minmax_nb['min'], file=f)
+    print(f"Confusion matrix for Naive Bayes for min accuracy:", file=f)
+    print(conf_matrix_nb['conftestmin'], file=f)
+    print(f"Mean test accuracy for NB with predicted labels is", file=f)
+    print(mean(accuracy_nb_test_list_nlp), file=f)
+    print(".............................", file=f)
+
 def print_summary_of_results(f: _io.TextIOWrapper, minmax_nn: dict, conf_matrix_nn: dict,
                              accuracy_nn_test_list: list, minmax_nn_nlp: dict, conf_matrix_nn_nlp: dict,
                              accuracy_nn_test_list_nlp: list, accuracy_nn_val_list: list,

@@ -11,7 +11,7 @@ import mysql.connector
 import pandas
 
 
-def tf_idf_retrieval(mycursor: mysql.connector.cursor):
+def tf_idf_retrieval(mycursor: mysql.connector.cursor, database_name: str):
     """
     This function retrieves tfidf scores for all documents
     inputs:
@@ -23,7 +23,7 @@ def tf_idf_retrieval(mycursor: mysql.connector.cursor):
     """
     # retrieve columns from dataframe, containing the key words corresponding
     # to tfidf scores
-    sql = "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA='final' AND TABLE_NAME='tfidfpd2'";
+    sql = f"SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA='{database_name}' AND TABLE_NAME='tfidfpd2'";
     mycursor.execute(sql)
     NameOfColumns = mycursor.fetchall()
 
@@ -148,7 +148,7 @@ def get_data_from_different_labels_for_cluster_initialisation(no_labeled_sets: i
 
         report_name = id2name[ID]  # get the corresponding report name from ID
 
-        # if the numbre of required labeled documents of each type has not been
+        # if the number of required labeled documents of each type has not been
         # reached, then add label to label_only_once if it has not been met 
         # before and add it to the list with all labels so far
         if labels_tot.count(label) < no_labeled_sets:

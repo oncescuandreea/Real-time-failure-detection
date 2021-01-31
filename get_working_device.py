@@ -41,10 +41,15 @@ def main():
         "--sql_password",
         type=str,
     )
+    parser.add_argument(
+        "--database_name",
+        type=str,
+        default='final',
+    )
     args = parser.parse_args()
     cnx = mysql.connector.connect(user='root', password=args.sql_password,
                                   host='127.0.0.1',
-                                  database='final_bare')
+                                  database=args.database_name)
     mycursor = cnx.cursor()
     sqldataID = "select * from an"
     mycursor.execute(sqldataID)

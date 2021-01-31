@@ -149,13 +149,25 @@ def train_svm(dict_svm: dict, dictXy: dict, accuracy_SVM_test_list: list,
 
 
 def train_nb(X_traintot: np.ndarray, y_traintot: np.ndarray, X_test: np.ndarray, y_test: np.ndarray,
-             f: _io.TextIOWrapper, label: str = ''):
+             f: _io.TextIOWrapper, label: str = '', minmax_nb_nlp: dict = {}, conf_matrix_nb_nlp: dict = {},
+             accuracy_nb_test_list_nlp: list = []):
     modelG = GaussianNB()
     modelG.fit(X_traintot, y_traintot)
-    predictedG = modelG.predict(X_test)
-    scoreG = accuracy_score(y_test, predictedG, normalize=True)
-
-    print(f"Accuracy NB {label} is:", file=f)
-    print(scoreG, file=f)
-    print(f"Confusion matrix for {label} Naive Bayes:", file=f)
-    print(confusion_matrix(y_test, predictedG), file=f)
+    predicted_nb = modelG.predict(X_test)
+    score_nb = accuracy_score(y_test, predicted_nb, normalize=True)
+    if label == 'NLP':
+        if score_nb >= minmax_nb_nlp['max']:
+            minmax_nb_nlp['max'] = score_nb
+            conf_matrix_nb_nlp['conftestmax'] = confusion_matrix(y_test,
+                                                                 predicted_nb)
+        if score_nb <= minmax_nb_nlp['min']:
+            minmax_nb_nlp['min'] = score_nb
+            conf_matrix_nb_nlp['conftestmin'] = confusion_matrix(y_test,
+                                                                 predicted_nb)
+        accuracy_nb_test_list_nlp.append(score_nb)
+        return minmax_nb_nlp, minmax_nb_nlp
+    else:
+        print(f"Accuracy NB {label} is:", file=f)
+        print(score_nb, file=f)
+        print(f"Confusion matrix for {label} Naive Bayes:", file=f)
+        print(confusion_matrix(y_test, predicted_nb), file=f)
