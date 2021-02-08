@@ -12,9 +12,16 @@ Then, save the *sql_databases/dump-final-tables-start-2021.sql* file in MySQL\My
 ```
 mysql -u root -p final < dump-final-tables-start-2021.sql
 ```
+
+Python version used is 3.7.1 and to run the experiments, the following conda environment should be created and activated:
+```
+cd envs
+conda env create --name conda_env --file=conda_env.yml
+conda activate conda_env
+```
 Download the folders with [recorded data](https://drive.google.com/file/d/1FaJK0pMIHg-x5dnGmrmts8z9h3-vbLpa/view?usp=sharing) and [written failure reports](https://drive.google.com/file/d/1gmovGbZ0iGfg5QCHeaK6wkSqllJ2qdbE/view?usp=sharing).
 Now, run the python scripts to generate tables with features for sensor data and for word documents.\
-To generate the sensor features run the *extracting_{sensor}_features.py* files. As an example:
+To generate the sensor features run the *extracting_{sensor}_features.py* files from main folder. As an example:
 ```
 python extracting_gsr_features.py --sql_password {insert here your sql password} --data_folder_location {location of folder with recorded data .csv files}
 ```
