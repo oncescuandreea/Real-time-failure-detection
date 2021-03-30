@@ -13,46 +13,49 @@ random.seed(0)
 
 def run_random_seed_exp(no_labeled_sets: int, id2name: dict, final: pd.DataFrame, indexname: list,
                         cnx: mysql.connector, num_clusters: int, mycursor: mysql.connector.cursor,
-                        length: int, results_folder: Path):
+                        length: int, results_folder: Path, refresh: bool):
     counter = 0
-    (results_folder / "nlp_clustering").mkdir(parents=True, exist_ok=True)
-    while counter < 100:
+    if os.path.exists(results_folder / f"nlp_clustering_{no_labeled_sets}") and refresh is False:
+        print(f"Experiments have already been run, proceeding to summary")
+    else:
+        while counter < 100:
 
-        [test, _, arrayn] = \
-            get_data_from_different_labels_for_cluster_initialisation(no_labeled_sets,
-                                                                      id2name,
-                                                                      final,
-                                                                      indexname,
-                                                                      cnx)
+            [test, _, arrayn] = \
+                get_data_from_different_labels_for_cluster_initialisation(no_labeled_sets,
+                                                                          id2name,
+                                                                          final,
+                                                                          indexname,
+                                                                          cnx)
 
-        [clusters, number_labels_provided] = kmeans_clustering(num_clusters,
-                                                               no_labeled_sets,
-                                                               arrayn,
-                                                               final)
+            [clusters, number_labels_provided] = kmeans_clustering(num_clusters,
+                                                                   no_labeled_sets,
+                                                                   arrayn,
+                                                                   final)
 
-        # create dictionary of name of reports and cluster associated
-        report_name_to_cluster = {}
+            # create dictionary of name of reports and cluster associated
+            report_name_to_cluster = {}
 
-        for count, el in enumerate(indexname):
-            report_name_to_cluster.update({el: clusters[count]})
-        (results_folder / f"nlp_clustering_{no_labeled_sets}").mkdir(exist_ok=True, parents=True)
-        f, _, _ = nlp_labels_analysis(mycursor,
-                                      num_clusters=num_clusters,
-                                      length=length,
-                                      clusters=clusters,
-                                      number_of_labels_provided=number_labels_provided,
-                                      test=test,
-                                      id2name=id2name,
-                                      results_folder=results_folder / f"nlp_clustering_{no_labeled_sets}")
-        time.sleep(2)
-        f.close()
-        counter += 1
+            for count, el in enumerate(indexname):
+                report_name_to_cluster.update({el: clusters[count]})
+            (results_folder / f"nlp_clustering_{no_labeled_sets}").mkdir(exist_ok=True, parents=True)
+            f, _, _ = nlp_labels_analysis(mycursor,
+                                          num_clusters=num_clusters,
+                                          length=length,
+                                          clusters=clusters,
+                                          number_of_labels_provided=number_labels_provided,
+                                          test=test,
+                                          id2name=id2name,
+                                          results_folder=results_folder / f"nlp_clustering_{no_labeled_sets}")
+            time.sleep(2)
+            f.close()
+            counter += 1
 
 
 def summarise_results(results_folder, length, no_labeled_sets):
     generated_folders = os.listdir(results_folder / f"nlp_clustering_{no_labeled_sets}")
     max_accuracy = 0
     min_accuracy = 1
+    print("Going through generated data and finding maximum and minimum accuracy and location")
     for folder in generated_folders:
         with open(
                 results_folder / f"nlp_clustering_{no_labeled_sets}" / folder / "nlp_cluster_to_label_association.txt",
@@ -92,6 +95,11 @@ def main():
         type=str,
         default='final',
     )
+    parser.add_argument(
+        "--refresh",
+        type=bool,
+        default=False,
+    )
     args = parser.parse_args()
     # connect to database
     cnx = mysql.connector.connect(user='root', password=args.sql_password,
@@ -112,7 +120,7 @@ def main():
     no_labeled_sets = number_of_tests
 
     run_random_seed_exp(no_labeled_sets, id2name, final, indexname,
-                        cnx, num_clusters, mycursor, length, args.results_folder)
+                        cnx, num_clusters, mycursor, length, args.results_folder, args.refresh)
 
     list_accuracies = summarise_results(args.results_folder, length, no_labeled_sets)
     print(list_accuracies)
