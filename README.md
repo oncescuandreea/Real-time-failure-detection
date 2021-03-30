@@ -43,6 +43,6 @@ python data_classification_only.py --sql_password {insert here your sql password
 ```
 To generate only NLP clustering results from section 5 run the following code with the number of required labeled examples of each failure type:
 ```
-python nlp_clustering_accuracy.py --sql_password sqlAmonouaparola213 --database_name final_bare --provided_labels 1 --results_folder {folder where plots and summary .txt files are generated}
+python nlp_clustering_accuracy.py --sql_password {sql password} --database_name final_bare --provided_labels 1 --results_folder {folder where plots and summary .txt files are generated}
 ```
 To print information about features in tables found in the paper, various useful functions can be found in *misc/getresultsforNLPjournal.py* file.
