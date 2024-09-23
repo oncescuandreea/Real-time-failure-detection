@@ -1,9 +1,10 @@
 # Real-time-failure-detection
 
 To re-run experiments presented in paper "Sensor fault detection and isolation for health monitoring
-devices by learning from failures", clone this repository and clone the environment found in envs/conda_env.yml.
+devices by learning from failures", clone this repository and clone the environment found in envs/conda_env.yml. Instructions about how to clone the environment are found below.
 
-**The following steps are necessary to run the experiments:**\
+### The following steps are necessary to run the experiments:
+
 Create a database called *final* in mysql command line:
 ```
 create database final;
@@ -25,11 +26,13 @@ To generate the sensor features run the *extracting_{sensor}_features.py* files 
 ```
 python extracting_gsr_features.py --sql_password {insert here your sql password} --data_folder_location {location of folder with recorded data .csv files}
 ```
-To generate the tfidf vectors run the code below:
+
+#### To generate the tfidf vectors run the code below:
 ```
 python tfidf_vector_extraction.py --sql_password {insert here your sql password} --report_folder_location {location of folder with recorded data .docx files}
 ```
-Lastly, to generate working features from multiple working sensor features, run this code:
+
+#### Lastly, to generate working features from multiple working sensor features, run this code:
 ```
 python get_working_device.py --sql_password {insert here your sql password}
 ```
